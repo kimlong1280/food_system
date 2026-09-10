@@ -36,10 +36,18 @@ fi
 # Link storage
 php artisan storage:link --force || true
 
-# Run database migrations if DB is set
+# Run database migrations and seeding
 if [ -n "$DATABASE_URL" ] || [ -n "$DB_HOST" ]; then
-    echo "Running database migrations..."
-    php artisan migrate --force || echo "Migration skipped or failed, continuing..."
+    echo "Waiting for database connection and running migrations..."
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        if php artisan migrate --force; then
+            echo "Database migrations completed successfully!"
+            php artisan db:seed --force || echo "Seeding completed or already seeded."
+            break
+        fi
+        echo "Database not ready yet, retrying in 3 seconds ($i/10)..."
+        sleep 3
+    done
 fi
 
 echo "Starting Nginx and PHP-FPM via Supervisord..."
