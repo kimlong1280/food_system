@@ -38,17 +38,7 @@ php artisan storage:link --force || true
 
 # Run database migrations and seeding
 if [ -n "$DATABASE_URL" ] || [ -n "$DB_HOST" ]; then
-    # Expand short Render hostname and add sslmode=require
-    if [ -n "$DATABASE_URL" ]; then
-        DATABASE_URL=$(echo "$DATABASE_URL" | sed -E 's/@(dpg-[a-z0-9]+-[a-z0-9]+)([:\/])/@\1.singapore-postgres.render.com\2/g')
-        if ! echo "$DATABASE_URL" | grep -q "sslmode="; then
-            case "$DATABASE_URL" in
-                *\?*) DATABASE_URL="${DATABASE_URL}&sslmode=require" ;;
-                *)    DATABASE_URL="${DATABASE_URL}?sslmode=require" ;;
-            esac
-        fi
-        export DATABASE_URL
-    fi
+    echo "DATABASE_URL is set, proceeding with migrations..."
     echo "Waiting for database connection and running migrations..."
     for i in 1 2 3 4 5 6 7 8 9 10; do
         if php artisan migrate --force; then

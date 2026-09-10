@@ -17,7 +17,7 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_SSLMODE
-        value: require
+        value: disable
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
