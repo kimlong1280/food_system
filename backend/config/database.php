@@ -95,6 +95,10 @@ return [
                     $fullHost = $parsed['host'] . '.' . $region . '-postgres.render.com';
                     $dbUrl = str_replace('@' . $parsed['host'], '@' . $fullHost, $dbUrl);
                 }
+
+                if (!str_contains($dbUrl, 'sslmode=')) {
+                    $dbUrl .= (str_contains($dbUrl, '?') ? '&' : '?') . 'sslmode=require';
+                }
             }
 
             return [
@@ -109,7 +113,7 @@ return [
                 'prefix' => '',
                 'prefix_indexes' => true,
                 'search_path' => 'public',
-                'sslmode' => env('DB_SSLMODE', 'prefer'),
+                'sslmode' => env('DB_SSLMODE', 'require'),
             ];
         })(),
 
