@@ -45,18 +45,31 @@ Route::prefix('')->group(function () {
     });
     Route::get('/debug-db', function () {
         try {
+            $rawUrl = env('DATABASE_URL', '');
+            $rawHost = parse_url($rawUrl, PHP_URL_HOST) ?: 'N/A';
+            $configUrl = config('database.connections.pgsql.url', '');
+            $configHost = parse_url($configUrl, PHP_URL_HOST) ?: 'N/A';
+
             $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
             $tables = \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
             return response()->json([
                 'status' => 'connected',
+                'raw_host' => $rawHost,
+                'resolved_host' => $configHost,
+                'sslmode' => config('database.connections.pgsql.sslmode'),
                 'driver' => \Illuminate\Support\Facades\DB::connection()->getDriverName(),
                 'tables' => array_column($tables, 'table_name'),
-                'categories_count' => \App\Models\Category::count(),
-                'menu_items_count' => \App\Models\MenuItem::count(),
             ]);
         } catch (\Throwable $e) {
+            $rawUrl = env('DATABASE_URL', '');
+            $rawHost = parse_url($rawUrl, PHP_URL_HOST) ?: 'N/A';
+            $configUrl = config('database.connections.pgsql.url', '');
+            $configHost = parse_url($configUrl, PHP_URL_HOST) ?: 'N/A';
             return response()->json([
                 'status' => 'error',
+                'raw_host' => $rawHost,
+                'resolved_host' => $configHost,
+                'sslmode' => config('database.connections.pgsql.sslmode'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getFile() . ':' . $e->getLine(),
             ], 500);

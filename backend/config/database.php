@@ -86,9 +86,20 @@ return [
 
         'pgsql' => (function () {
             $dbUrl = env('DATABASE_URL', env('DB_URL'));
-            // Ensure sslmode=require is in the URL itself so PDO actually uses SSL
-            if ($dbUrl && !str_contains($dbUrl, 'sslmode=')) {
-                $dbUrl .= (str_contains($dbUrl, '?') ? '&' : '?') . 'sslmode=require';
+            if ($dbUrl) {
+                $parsed = parse_url($dbUrl);
+                // Render's fromDatabase gives internal short hostname (e.g. dpg-xxx-a)
+                // that Alpine Linux musl DNS cannot resolve. Expand it to full external hostname.
+                if (!empty($parsed['host']) && !str_contains($parsed['host'], '.')) {
+                    $fullHost = $parsed['host'] . '.singapore-postgres.render.com';
+                    $dbUrl = str_replace('//' . $parsed['user'] . ':' . $parsed['pass'] . '@' . $parsed['host'],
+                        '//' . $parsed['user'] . ':' . $parsed['pass'] . '@' . $fullHost,
+                        $dbUrl);
+                }
+                // External Render Postgres requires SSL
+                if (!str_contains($dbUrl, 'sslmode=')) {
+                    $dbUrl .= (str_contains($dbUrl, '?') ? '&' : '?') . 'sslmode=require';
+                }
             }
             return [
                 'driver' => 'pgsql',
