@@ -1,0 +1,38 @@
+services:
+  # Laravel Backend API Service
+  - type: web
+    name: food-system-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    envVars:
+      - key: APP_NAME
+        value: "SreyKeo Coffee & Soup"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: food-system-db
+          property: connectionString
+      - key: APP_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+databases:
+  # Free Managed PostgreSQL Database on Render
+  - name: food-system-db
+    plan: free
+    region: singapore
+    databaseName: food_system
+    user: postgres
