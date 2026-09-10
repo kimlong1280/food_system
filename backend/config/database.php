@@ -84,38 +84,19 @@ return [
             ]) : [],
         ],
 
-        'pgsql' => (function () {
-            $dbUrl = env('DATABASE_URL', env('DB_URL'));
-            if ($dbUrl) {
-                $parsed = parse_url($dbUrl);
-                // Render's fromDatabase gives internal short hostname (e.g. dpg-xxx-a)
-                // that Alpine Linux musl DNS cannot resolve. Expand it to full external hostname.
-                if (!empty($parsed['host']) && !str_contains($parsed['host'], '.')) {
-                    $fullHost = $parsed['host'] . '.singapore-postgres.render.com';
-                    $dbUrl = str_replace('//' . $parsed['user'] . ':' . $parsed['pass'] . '@' . $parsed['host'],
-                        '//' . $parsed['user'] . ':' . $parsed['pass'] . '@' . $fullHost,
-                        $dbUrl);
-                }
-                // External Render Postgres requires SSL
-                if (!str_contains($dbUrl, 'sslmode=')) {
-                    $dbUrl .= (str_contains($dbUrl, '?') ? '&' : '?') . 'sslmode=require';
-                }
-            }
-            return [
-                'driver' => 'pgsql',
-                'url' => $dbUrl,
-                'host' => env('DB_HOST', '127.0.0.1'),
-                'port' => env('DB_PORT', '5432'),
-                'database' => env('DB_DATABASE', 'laravel'),
-                'username' => env('DB_USERNAME', 'root'),
-                'password' => env('DB_PASSWORD', ''),
-                'charset' => env('DB_CHARSET', 'utf8'),
-                'prefix' => '',
-                'prefix_indexes' => true,
-                'search_path' => 'public',
-                'sslmode' => env('DB_SSLMODE', 'require'),
-            ];
-        })(),
+        'pgsql' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'disable'),
+        ],
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',

@@ -16,16 +16,32 @@ services:
         value: "false"
       - key: DB_CONNECTION
         value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: food-system-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: food-system-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: food-system-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: food-system-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: food-system-db
+          property: password
       - key: DB_SSLMODE
-        value: require
+        value: disable
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
         value: file
-      - key: DATABASE_URL
-        fromDatabase:
-          name: food-system-db
-          property: connectionString
       - key: APP_KEY
         value: "base64:w4JoZ1uAw3ec9Hc+U/5ZkyEREm5LgNeF4GzmTJnNYQY="
       - key: APP_URL
