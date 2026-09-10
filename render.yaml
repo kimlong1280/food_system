@@ -20,6 +20,8 @@ services:
         fromDatabase:
           name: food-system-db
           property: connectionString
+      - key: APP_KEY
+        value: "base64:w4JoZ1uAw3ec9Hc+U/5ZkyEREm5LgNeF4GzmTJnNYQY="
       - key: APP_URL
         sync: false
       - key: FRONTEND_URL
