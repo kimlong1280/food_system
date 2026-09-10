@@ -10,13 +10,16 @@ RUN apk add --no-cache \
     curl \
     git \
     unzip \
+    ca-certificates \
+    openssl \
     libpq-dev \
     libzip-dev \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
     icu-dev \
-    oniguruma-dev
+    oniguruma-dev \
+    && update-ca-certificates
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
