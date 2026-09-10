@@ -38,7 +38,15 @@ php artisan storage:link --force || true
 
 # Run database migrations and seeding
 if [ -n "$DATABASE_URL" ] || [ -n "$DB_HOST" ]; then
-    echo "DATABASE_URL is set, proceeding with migrations..."
+    # Ensure sslmode=require is in DATABASE_URL for external Render connections
+    if [ -n "$DATABASE_URL" ]; then
+        case "$DATABASE_URL" in
+            *sslmode=*) ;; # already has sslmode
+            *\?*) DATABASE_URL="${DATABASE_URL}&sslmode=require"; export DATABASE_URL ;;
+            *)    DATABASE_URL="${DATABASE_URL}?sslmode=require"; export DATABASE_URL ;;
+        esac
+        echo "DATABASE_URL configured with SSL, proceeding..."
+    fi
     echo "Waiting for database connection and running migrations..."
     for i in 1 2 3 4 5 6 7 8 9 10; do
         if php artisan migrate --force; then
