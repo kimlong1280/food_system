@@ -20,8 +20,48 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::prefix('')->group(function () {
-    // Health check
+    // Health & Diagnostic checks
     Route::get('/health', fn () => response()->json(['status' => 'healthy', 'restaurant' => config('app.name')]));
+    Route::get('/run-setup', function () {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
+
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+
+            return response()->json([
+                'status' => 'success',
+                'migrate' => $migrateOutput,
+                'seed' => $seedOutput,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getFile() . ':' . $e->getLine(),
+            ], 500);
+        }
+    });
+    Route::get('/debug-db', function () {
+        try {
+            $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $tables = \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+            return response()->json([
+                'status' => 'connected',
+                'driver' => \Illuminate\Support\Facades\DB::connection()->getDriverName(),
+                'tables' => array_column($tables, 'table_name'),
+                'categories_count' => \App\Models\Category::count(),
+                'menu_items_count' => \App\Models\MenuItem::count(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getFile() . ':' . $e->getLine(),
+            ], 500);
+        }
+    });
 
     // Customer Menu & Categories
     Route::get('/categories', [MenuController::class, 'categories']);
