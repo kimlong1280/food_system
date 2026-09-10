@@ -38,6 +38,11 @@ php artisan storage:link --force || true
 
 # Run database migrations and seeding
 if [ -n "$DATABASE_URL" ] || [ -n "$DB_HOST" ]; then
+    # Expand short Render hostname if missing domain (e.g. dpg-xxxx-a -> dpg-xxxx-a.singapore-postgres.render.com)
+    if [ -n "$DATABASE_URL" ]; then
+        DATABASE_URL=$(echo "$DATABASE_URL" | sed -E 's/@(dpg-[a-z0-9]+-[a-z0-9]+)([:\/])/@\1.singapore-postgres.render.com\2/g')
+        export DATABASE_URL
+    fi
     echo "Waiting for database connection and running migrations..."
     for i in 1 2 3 4 5 6 7 8 9 10; do
         if php artisan migrate --force; then
