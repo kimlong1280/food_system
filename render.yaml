@@ -35,4 +35,3 @@ databases:
     plan: free
     region: singapore
     databaseName: food_system
-    user: postgres
