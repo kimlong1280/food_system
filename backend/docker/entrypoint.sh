@@ -105,24 +105,55 @@ if [ -n "$DATABASE_URL" ]; then
     export DATABASE_URL
 fi
 
+# Ensure database directory and sqlite database exist with proper permissions
+mkdir -p /var/www/html/database
+touch /var/www/html/database/database.sqlite
+chown -R www-data:www-data /var/www/html/database
+chmod -R 775 /var/www/html/database
+chmod 664 /var/www/html/database/database.sqlite
+
+# Verify PostgreSQL connection; fallback to SQLite if unreachable
+if [ "$DB_CONNECTION" = "pgsql" ] || [ -n "$DB_HOST" ]; then
+    echo "Verifying PostgreSQL connection..."
+    if php -r '
+        $h = getenv("DB_HOST");
+        $u = getenv("DB_USERNAME");
+        $p = getenv("DB_PASSWORD");
+        $d = getenv("DB_DATABASE");
+        $s = getenv("DB_SSLMODE") ?: "prefer";
+        $port = getenv("DB_PORT") ?: 5432;
+        try {
+            $pdo = new PDO("pgsql:host={$h};port={$port};dbname={$d};sslmode={$s}", $u, $p, [PDO::ATTR_TIMEOUT => 3]);
+            exit(0);
+        } catch (\Throwable $e) {
+            exit(1);
+        }
+    '; then
+        echo "PostgreSQL is reachable and connected!"
+    else
+        echo "PostgreSQL database is currently unreachable."
+        echo "Activating built-in SQLite database fallback so APIs and menu work immediately..."
+        export DB_CONNECTION=sqlite
+        export DB_DATABASE=/var/www/html/database/database.sqlite
+    fi
+fi
+
 # Cache configuration and routes for production performance
 echo "Caching configuration..."
 php artisan config:cache || echo "Warning: config cache failed, continuing..."
 php artisan route:cache || echo "Warning: route cache failed, continuing..."
 
 # Run database migrations and seeding
-if [ -n "$DB_HOST" ] || [ -n "$DATABASE_URL" ]; then
-    echo "Database configured, running migrations..."
-    for i in 1 2 3 4 5 6 7 8 9 10; do
-        if php artisan migrate --force; then
-            echo "Database migrations completed successfully!"
-            php artisan db:seed --force || echo "Seeding completed or already seeded."
-            break
-        fi
-        echo "Database migration attempt $i/10 failed, retrying in 3 seconds..."
-        sleep 3
-    done
-fi
+echo "Running database migrations and seeding..."
+for i in 1 2 3; do
+    if php artisan migrate --force; then
+        echo "Database migrations completed successfully!"
+        php artisan db:seed --force || echo "Seeding completed or already seeded."
+        break
+    fi
+    echo "Database migration attempt $i/3 failed, retrying in 2 seconds..."
+    sleep 2
+done
 
 echo "Starting Nginx and PHP-FPM via Supervisord..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

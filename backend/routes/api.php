@@ -21,7 +21,13 @@ use Illuminate\Support\Facades\Route;
 */
 Route::prefix('')->group(function () {
     // Health & Diagnostic checks
-    Route::get('/health', fn () => response()->json(['status' => 'healthy', 'restaurant' => config('app.name')]));
+    Route::get('/health', fn () => response()->json([
+        'status' => 'healthy',
+        'restaurant' => config('app.name'),
+        'database' => config('database.default'),
+        'categories_count' => \App\Models\Category::count(),
+        'menu_items_count' => \App\Models\MenuItem::count(),
+    ]));
     Route::get('/run-setup', function () {
         try {
             \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
