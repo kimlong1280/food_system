@@ -106,7 +106,7 @@ return [
             // Expand short Render hostname (e.g. dpg-xxx-a) if unresolvable
             if (!empty($host) && !str_contains($host, '.') && str_starts_with($host, 'dpg-')) {
                 if (gethostbyname($host) === $host) {
-                    $regions = ['singapore', 'oregon', 'frankfurt', 'ohio'];
+                    $regions = ['oregon', 'singapore', 'frankfurt', 'ohio'];
                     foreach ($regions as $r) {
                         $candidate = "{$host}.{$r}-postgres.render.com";
                         if (gethostbyname($candidate) !== $candidate) {

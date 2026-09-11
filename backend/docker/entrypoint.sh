@@ -58,7 +58,7 @@ if [ -n "$DB_HOST" ]; then
                     } catch (\Throwable $e) {}
                 }
 
-                foreach (["singapore", "oregon", "frankfurt", "ohio"] as $r) {
+                foreach (["oregon", "singapore", "frankfurt", "ohio"] as $r) {
                     $candidate = "{$base}.{$r}-postgres.render.com";
                     try {
                         $dsn = "pgsql:host={$candidate};port={$port};dbname={$db};sslmode=require";
@@ -68,7 +68,7 @@ if [ -n "$DB_HOST" ]; then
                     } catch (\Throwable $e) {}
                 }
 
-                echo "{$base}.singapore-postgres.render.com";
+                echo "{$base}.oregon-postgres.render.com";
             ')
             if [ -n "$RESOLVED_HOST" ]; then
                 export DB_HOST="$RESOLVED_HOST"

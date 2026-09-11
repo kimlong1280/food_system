@@ -44,29 +44,57 @@ Route::prefix('')->group(function () {
         }
     });
     Route::get('/debug-db', function () {
-        try {
-            $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
-            $tables = \Illuminate\Support\Facades\DB::select("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-            return response()->json([
-                'status' => 'connected',
-                'env_host' => env('DB_HOST'),
-                'config_host' => config('database.connections.pgsql.host'),
-                'sslmode' => config('database.connections.pgsql.sslmode'),
-                'driver' => \Illuminate\Support\Facades\DB::connection()->getDriverName(),
-                'tables' => array_column($tables, 'table_name'),
-                'categories_count' => \App\Models\Category::count(),
-                'menu_items_count' => \App\Models\MenuItem::count(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'status' => 'error',
-                'env_host' => env('DB_HOST'),
-                'config_host' => config('database.connections.pgsql.host'),
-                'sslmode' => config('database.connections.pgsql.sslmode'),
-                'message' => $e->getMessage(),
-                'trace' => $e->getFile() . ':' . $e->getLine(),
-            ], 500);
+        $base = env('DB_HOST', '');
+        if (str_contains($base, '.')) {
+            $parts = explode('.', $base);
+            $base = $parts[0];
         }
+        $user = env('DB_USERNAME', '');
+        $pass = env('DB_PASSWORD', '');
+        $db = env('DB_DATABASE', '');
+        $port = env('DB_PORT', 5432);
+
+        $results = [];
+        $connectedRegion = null;
+        $connectedPdo = null;
+
+        foreach (['oregon', 'singapore', 'frankfurt', 'ohio'] as $region) {
+            $candidate = "{$base}.{$region}-postgres.render.com";
+            $ip = gethostbyname($candidate);
+            try {
+                $dsn = "pgsql:host={$candidate};port={$port};dbname={$db};sslmode=require";
+                $pdo = new \PDO($dsn, $user, $pass, [\PDO::ATTR_TIMEOUT => 4, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+                $tables = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")->fetchAll(\PDO::FETCH_COLUMN);
+                $results[$region] = [
+                    'status' => 'connected',
+                    'host' => $candidate,
+                    'ip' => $ip,
+                    'tables' => $tables,
+                ];
+                if (!$connectedRegion) {
+                    $connectedRegion = $region;
+                    $connectedPdo = $pdo;
+                }
+            } catch (\Throwable $e) {
+                $results[$region] = [
+                    'status' => 'failed',
+                    'host' => $candidate,
+                    'ip' => $ip,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'base' => $base,
+            'user' => $user,
+            'db' => $db,
+            'port' => $port,
+            'current_config_host' => config('database.connections.pgsql.host'),
+            'current_config_sslmode' => config('database.connections.pgsql.sslmode'),
+            'connected_region' => $connectedRegion,
+            'results' => $results,
+        ]);
     });
 
     // Customer Menu & Categories
