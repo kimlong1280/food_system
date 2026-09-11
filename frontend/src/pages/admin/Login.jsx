@@ -9,8 +9,8 @@ const Login = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@example.com')
+  const [password, setPassword] = useState('password')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -88,6 +88,27 @@ const Login = () => {
                   placeholder="••••••••"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
+              </div>
+            </div>
+
+            {/* Default Credentials Helper */}
+            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 text-xs flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-semibold">Admin Credentials:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('admin@example.com')
+                    setPassword('password')
+                  }}
+                  className="text-[11px] font-bold text-orange-400 hover:text-orange-300 underline cursor-pointer"
+                >
+                  Fill Default
+                </button>
+              </div>
+              <div className="flex items-center justify-between text-slate-300 font-mono text-[11px]">
+                <span>admin@example.com</span>
+                <span>password</span>
               </div>
             </div>
 
