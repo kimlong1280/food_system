@@ -23,6 +23,8 @@ class OrderResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'total' => (float) $this->total,
             'formatted_total' => '$' . number_format((float) $this->total, 2),
+            'total_khr' => (int) round((float) $this->total * 4000),
+            'formatted_total_khr' => number_format(round((float) $this->total * 4000)) . ' ៛',
             'note' => $this->note,
             'items' => OrderItemResource::collection($this->whenLoaded('orderItems')),
             'items_count' => $this->orderItems_count ?? $this->orderItems?->count() ?? 0,

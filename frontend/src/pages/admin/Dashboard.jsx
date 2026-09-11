@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FiShoppingBag,
@@ -8,17 +8,56 @@ import {
   FiArrowRight,
   FiRefreshCw,
   FiAlertCircle,
+  FiPlus,
+  FiMapPin,
+  FiSearch,
+  FiX,
+  FiEye,
+  FiCheck,
+  FiBell,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
 import StatsCard from '../../components/admin/StatsCard'
 import StatusBadge from '../../components/admin/StatusBadge'
-import { PageLoading } from '../../components/Loading'
+import { PageLoading, Spinner } from '../../components/Loading'
 
 const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [updatingId, setUpdatingId] = useState(null)
+
+  // Filtering & Search
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Selected Order for Details Modal
+  const [selectedOrder, setSelectedOrder] = useState(null)
+
+  // Live Cambodia Time
+  const [currentTime, setCurrentTime] = useState('')
+
+  useEffect(() => {
+    const updateTime = () => {
+      try {
+        const now = new Date()
+        setCurrentTime(
+          now.toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Phnom_Penh',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+        )
+      } catch {
+        setCurrentTime(new Date().toLocaleTimeString())
+      }
+    }
+    updateTime()
+    const timer = setInterval(updateTime, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchDashboardStats = async (isManual = false) => {
     if (isManual) setRefreshing(true)
@@ -37,256 +76,633 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardStats()
 
-    // Polling every 30 seconds for live order updates
+    // Polling every 20 seconds for real-time kitchen updates
     const timer = setInterval(() => {
       fetchDashboardStats()
-    }, 30000)
+    }, 20000)
 
     return () => clearInterval(timer)
   }, [])
 
-  // Quick order status update from dashboard
+  // Quick order status update
   const handleQuickStatusUpdate = async (orderId, newStatus) => {
+    setUpdatingId(orderId)
     try {
       await api.put(`/admin/orders/${orderId}/status`, { status: newStatus })
-      toast.success(`Order status updated to ${newStatus}!`)
-      fetchDashboardStats()
-    } catch {
-      toast.error('Failed to update order status.')
+      toast.success(`Order status updated to ${newStatus.toUpperCase()}!`)
+      await fetchDashboardStats()
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update order status.')
+    } finally {
+      setUpdatingId(null)
     }
   }
+
+  // Filtered orders list based on status filter and search input
+  const filteredOrders = useMemo(() => {
+    if (!data?.recent_orders) return []
+
+    return data.recent_orders.filter((order) => {
+      const matchesStatus =
+        statusFilter === 'all' || order.status?.toLowerCase() === statusFilter.toLowerCase()
+
+      const query = searchQuery.trim().toLowerCase()
+      const matchesQuery =
+        !query ||
+        order.order_number?.toLowerCase().includes(query) ||
+        String(order.table_number || '').toLowerCase().includes(query) ||
+        order.customer_name?.toLowerCase().includes(query)
+
+      return matchesStatus && matchesQuery
+    })
+  }, [data?.recent_orders, statusFilter, searchQuery])
+
+  // Count active pending and preparing orders
+  const activeKitchenCount = (data?.pending_orders || 0) + (data?.preparing_orders || 0)
 
   if (loading) return <PageLoading text="Aggregating restaurant statistics..." />
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Refresh Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Dashboard Overview
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Real-time dine-in order metrics and restaurant performance.
+    <div className="space-y-6 animate-fade-in">
+      {/* Top Banner & Management Quick Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Restaurant Management
+            </h1>
+            <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 hidden sm:inline">
+              Live Hub
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 flex items-center gap-2">
+            <span>Cambodia Time:</span>
+            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+              {currentTime || '--:--:--'}
+            </span>
           </p>
         </div>
 
-        <button
-          onClick={() => fetchDashboardStats(true)}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs active:scale-95 transition-all self-start sm:self-auto"
-        >
-          <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
+        {/* Action Shortcuts */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/admin/menu-items"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold shadow-sm shadow-orange-600/20 active:scale-95 transition-all"
+          >
+            <FiPlus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>Add Dish</span>
+          </Link>
+
+          <Link
+            to="/admin/orders"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shadow-sm shadow-slate-900/10 active:scale-95 transition-all"
+          >
+            <FiShoppingBag className="w-3.5 h-3.5" />
+            <span>Orders</span>
+            {activeKitchenCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px] font-black animate-pulse">
+                {activeKitchenCount}
+              </span>
+            )}
+          </Link>
+
+          <Link
+            to="/admin/tables"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold shadow-2xs active:scale-95 transition-all"
+          >
+            <FiMapPin className="w-3.5 h-3.5 text-slate-500" />
+            <span>Tables</span>
+          </Link>
+
+          <button
+            onClick={() => fetchDashboardStats(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            title="Refresh dashboard"
+          >
+            <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-600' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
+        {/* Today's Revenue with Dual USD & KHR */}
         <StatsCard
-          title="Today's Orders"
-          value={data?.today_orders || 0}
-          subtext="Placed today"
-          icon={<FiShoppingBag />}
-          color="blue"
+          title="Today's Revenue"
+          value={data?.formatted_today_revenue || '$0.00'}
+          khrValue={data?.formatted_today_revenue_khr}
+          subtext={`All-time: ${data?.formatted_total_revenue || '$0.00'} (${data?.formatted_total_revenue_khr || '0 ៛'})`}
+          icon={<FiDollarSign />}
+          color="purple"
         />
 
+        {/* Active Kitchen Orders */}
         <StatsCard
-          title="Pending Kitchen"
-          value={data?.pending_orders || 0}
-          subtext="Awaiting preparation"
+          title="Active Kitchen"
+          value={activeKitchenCount}
+          badge={data?.pending_orders > 0 ? `${data.pending_orders} pending` : 'All cooking'}
+          subtext={`${data?.preparing_orders || 0} preparing, ${data?.ready_orders || 0} ready`}
           icon={<FiClock />}
           color="orange"
         />
 
+        {/* Completed Orders */}
         <StatsCard
           title="Completed Today"
           value={data?.completed_orders || 0}
-          subtext="Served & closed"
+          subtext={`Total Orders: ${data?.total_orders || 0} all-time`}
           icon={<FiCheckCircle />}
           color="emerald"
         />
 
+        {/* Table Occupancy */}
         <StatsCard
-          title="Today's Revenue"
-          value={data?.formatted_today_revenue || '$0.00'}
-          subtext={`All-time: ${data?.formatted_total_revenue || '$0.00'}`}
-          icon={<FiDollarSign />}
-          color="purple"
+          title="Dining Tables"
+          value={`${data?.active_tables || 0} / ${data?.total_tables || 0}`}
+          badge={
+            data?.total_tables > 0
+              ? `${Math.round(((data?.active_tables || 0) / data.total_tables) * 100)}% Occupied`
+              : '0%'
+          }
+          subtext={`${(data?.total_tables || 0) - (data?.active_tables || 0)} tables currently free`}
+          icon={<FiMapPin />}
+          color="blue"
         />
       </div>
 
-      {/* Notice if any menu items are unavailable */}
-      {data?.unavailable_items_count > 0 && (
-        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-800">
-          <div className="flex items-center gap-2">
-            <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>
-              You currently have <strong>{data.unavailable_items_count} menu items</strong> marked as sold out / unavailable.
-            </span>
-          </div>
-          <Link
-            to="/admin/menu-items"
-            className="font-bold underline text-amber-900 hover:text-amber-700"
-          >
-            Manage Menu
-          </Link>
-        </div>
-      )}
-
-      {/* Two Column Layout: Recent Orders & Top Selling Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Recent Orders Table */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">Recent Dine-In Orders</h2>
-              <p className="text-xs text-slate-500">Live incoming customer orders</p>
+      {/* Priority Action Banners (Bill Requests & Sold Out Alerts) */}
+      <div className="space-y-3">
+        {/* Bill Payment Call Request Alert Banner */}
+        {data?.bill_requested_count > 0 && (
+          <div className="p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-3xl shadow-lg shadow-orange-500/20 flex flex-wrap items-center justify-between gap-3 animate-pulse-glow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shrink-0">
+                <FiBell className="w-5 h-5 text-white animate-bounce" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm tracking-tight">
+                  {data.bill_requested_count} Table(s) Requested Bill Payment!
+                </h3>
+                <p className="text-xs text-white/90">
+                  Customers are waiting for staff to collect payment and provide receipt.
+                </p>
+              </div>
             </div>
             <Link
-              to="/admin/orders"
-              className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700"
+              to="/admin/orders?filter=bill_requested"
+              className="px-4 py-2 bg-white text-orange-950 font-black text-xs rounded-xl hover:bg-orange-50 transition-all shadow-sm"
             >
-              <span>View All</span>
-              <FiArrowRight className="w-3.5 h-3.5" />
+              Review & Settle Bills &rarr;
             </Link>
           </div>
+        )}
 
+        {/* Sold Out / Unavailable Notice */}
+        {data?.unavailable_items_count > 0 && (
+          <div className="p-3.5 bg-amber-50 border border-amber-200/80 rounded-2xl flex items-center justify-between text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                You currently have <strong>{data.unavailable_items_count} menu items</strong> marked as sold out / hidden.
+              </span>
+            </div>
+            <Link
+              to="/admin/menu-items"
+              className="font-extrabold underline text-amber-950 hover:text-orange-600"
+            >
+              Manage Availability
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Main Grid: Orders Table (2 Columns) & Side Widgets (1 Column) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Columns: Live Orders Management Table */}
+        <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">Live Orders Management</h2>
+              <p className="text-xs text-slate-500">Track and advance incoming kitchen orders</p>
+            </div>
+
+            {/* Live Search Filter */}
+            <div className="relative w-full sm:w-56">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+              <input
+                type="text"
+                placeholder="Search table, #ORD..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-orange-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {[
+              { key: 'all', label: 'All Orders' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'preparing', label: 'Cooking' },
+              { key: 'ready', label: 'Ready' },
+              { key: 'completed', label: 'Completed' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                  statusFilter === tab.key
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Table Container */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[550px]">
+            <table className="w-full text-left text-xs min-w-[580px]">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="pb-3 font-bold">Order #</th>
-                  <th className="pb-3 font-bold">Table</th>
-                  <th className="pb-3 font-bold">Total</th>
-                  <th className="pb-3 font-bold">Time</th>
-                  <th className="pb-3 font-bold">Status</th>
-                  <th className="pb-3 font-bold text-right">Quick Action</th>
+                  <th className="pb-3 font-extrabold">Order #</th>
+                  <th className="pb-3 font-extrabold">Table</th>
+                  <th className="pb-3 font-extrabold">Total (USD / KHR)</th>
+                  <th className="pb-3 font-extrabold">Time</th>
+                  <th className="pb-3 font-extrabold">Status</th>
+                  <th className="pb-3 font-extrabold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data?.recent_orders?.length > 0 ? (
-                  data.recent_orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 font-black text-slate-900">
-                        <Link
-                          to={`/admin/orders?search=${order.order_number}`}
-                          className="hover:text-orange-600"
-                        >
-                          #{order.order_number}
-                        </Link>
-                      </td>
-                      <td className="py-3 font-bold text-slate-800">
-                        Table {order.table_number}
-                      </td>
-                      <td className="py-3 font-extrabold text-orange-600">
-                        {order.formatted_total}
-                      </td>
-                      <td className="py-3 text-slate-500">{order.formatted_time}</td>
-                      <td className="py-3">
-                        <StatusBadge status={order.status} />
-                      </td>
-                      <td className="py-3 text-right">
-                        {order.status === 'pending' ? (
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((order) => {
+                    const isBusy = updatingId === order.id
+                    const isBillRequested = order.is_payment_requested && order.status !== 'completed'
+
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* Order Number */}
+                        <td className="py-3 font-black text-slate-900">
                           <button
-                            onClick={() => handleQuickStatusUpdate(order.id, 'confirmed')}
-                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs"
+                            onClick={() => setSelectedOrder(order)}
+                            className="hover:text-orange-600 cursor-pointer flex items-center gap-1"
+                            title="Click to view full ticket"
                           >
-                            Confirm
+                            <span>#{order.order_number}</span>
+                            <FiEye className="w-3 h-3 text-slate-400" />
                           </button>
-                        ) : order.status === 'confirmed' ? (
-                          <button
-                            onClick={() => handleQuickStatusUpdate(order.id, 'preparing')}
-                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-2xs"
-                          >
-                            Prepare
-                          </button>
-                        ) : order.status === 'preparing' ? (
-                          <button
-                            onClick={() => handleQuickStatusUpdate(order.id, 'ready')}
-                            className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold shadow-2xs"
-                          >
-                            Mark Ready
-                          </button>
-                        ) : order.status === 'ready' ? (
-                          <button
-                            onClick={() => handleQuickStatusUpdate(order.id, 'served')}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-2xs"
-                          >
-                            Mark Served
-                          </button>
-                        ) : order.status === 'served' ? (
-                          <button
-                            onClick={() => handleQuickStatusUpdate(order.id, 'completed')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs"
-                          >
-                            Complete
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 font-medium">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          {order.customer_name && (
+                            <span className="block text-[10px] text-slate-400 font-medium truncate max-w-[120px]">
+                              {order.customer_name}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Table */}
+                        <td className="py-3">
+                          <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">
+                            <FiMapPin className="w-3 h-3 text-slate-500" />
+                            <span>Table {order.table_number || 'N/A'}</span>
+                          </span>
+                        </td>
+
+                        {/* Total in USD and KHR */}
+                        <td className="py-3">
+                          <p className="font-extrabold text-orange-600">{order.formatted_total}</p>
+                          <p className="text-[10px] text-slate-400 font-semibold">{order.formatted_total_khr}</p>
+                        </td>
+
+                        {/* Time */}
+                        <td className="py-3 text-slate-500 whitespace-nowrap">
+                          {order.formatted_time}
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="py-3">
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge status={order.status} />
+                            {isBillRequested && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-white animate-pulse">
+                                🔔 Bill Call
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Quick Status Progression Button */}
+                        <td className="py-3 text-right">
+                          {isBusy ? (
+                            <Spinner size="sm" className="inline-block text-orange-600" />
+                          ) : order.status === 'pending' ? (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(order.id, 'preparing')}
+                              className="px-3 py-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
+                              title="Accept and start cooking"
+                            >
+                              Cook
+                            </button>
+                          ) : order.status === 'preparing' ? (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(order.id, 'ready')}
+                              className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
+                              title="Mark food ready to serve"
+                            >
+                              Ready
+                            </button>
+                          ) : order.status === 'ready' ? (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(order.id, 'served')}
+                              className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
+                              title="Mark delivered to table"
+                            >
+                              Served
+                            </button>
+                          ) : order.status === 'served' ? (
+                            <button
+                              onClick={() => handleQuickStatusUpdate(order.id, 'completed')}
+                              className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
+                              title="Collect bill and complete"
+                            >
+                              Paid
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold transition-colors"
+                            >
+                              View
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
-                      No orders placed today yet.
+                    <td colSpan={6} className="py-10 text-center text-slate-400 space-y-1">
+                      <FiShoppingBag className="w-6 h-6 mx-auto text-slate-300" />
+                      <p className="text-xs font-bold text-slate-500">No matching orders found</p>
+                      <p className="text-[11px] text-slate-400">Try changing the status tab or search filter.</p>
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          <div className="pt-2 flex justify-between items-center text-xs text-slate-500 border-t border-slate-100">
+            <span>Showing {filteredOrders.length} recent orders</span>
+            <Link
+              to="/admin/orders"
+              className="font-extrabold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1"
+            >
+              <span>View Full Orders History</span>
+              <FiArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
-        {/* Right 1 Col: Top Selling Items */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">Popular Dishes</h2>
-            <p className="text-xs text-slate-500">Most ordered items by customers</p>
+        {/* Right 1 Column: Visual Tables Map & Popular Dishes */}
+        <div className="space-y-6">
+          {/* Tables Status Snapshot Grid */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Tables Snapshot</h2>
+                <p className="text-xs text-slate-500">Live floor occupancy</p>
+              </div>
+              <Link
+                to="/admin/tables"
+                className="text-xs font-bold text-orange-600 hover:text-orange-700"
+              >
+                QR Codes &rarr;
+              </Link>
+            </div>
+
+            {/* Quick Floor Grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {data?.tables?.length > 0 ? (
+                data.tables.map((tbl) => (
+                  <Link
+                    key={tbl.id}
+                    to={`/admin/orders?table=${tbl.table_number}`}
+                    className={`p-2 rounded-2xl border text-center transition-all hover:scale-105 ${
+                      tbl.is_occupied
+                        ? 'bg-orange-50 border-orange-300 text-orange-950 shadow-xs'
+                        : 'bg-slate-50 border-slate-200/80 text-slate-600'
+                    }`}
+                    title={`Table ${tbl.table_number} (${tbl.is_occupied ? 'Occupied / Dining' : 'Available'})`}
+                  >
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full mb-1 ${
+                        tbl.is_occupied ? 'bg-orange-500 animate-pulse' : 'bg-emerald-400'
+                      }`}
+                    />
+                    <p className="font-black text-xs">T-{tbl.table_number}</p>
+                    <p className="text-[9px] text-slate-400">{tbl.capacity}p</p>
+                  </Link>
+                ))
+              ) : (
+                <p className="col-span-4 text-center text-xs text-slate-400 py-4">
+                  No tables configured yet.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-center gap-4 text-[11px] pt-1 text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Free ({data?.total_tables - (data?.active_tables || 0)})</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                <span className="font-bold text-slate-700">Dining ({data?.active_tables || 0})</span>
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {data?.popular_items?.length > 0 ? (
-              data.popular_items.map((entry, idx) => (
-                <div
-                  key={entry.item.id}
-                  className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-100"
-                >
-                  <span className="w-6 text-center font-black text-xs text-slate-400">
-                    #{idx + 1}
-                  </span>
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-200 shrink-0">
-                    <img
-                      src={entry.item.image}
-                      alt={entry.item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-xs text-slate-900 truncate">
-                      {entry.item.name}
-                    </p>
-                    <p className="text-[11px] text-orange-600 font-semibold">
-                      {entry.item.formatted_price}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-bold text-slate-700">
-                      {entry.total_ordered} sold
+          {/* Popular Dishes Widget */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Popular Dishes</h2>
+                <p className="text-xs text-slate-500">Top selling menu items</p>
+              </div>
+              <Link
+                to="/admin/menu-items"
+                className="text-xs font-bold text-orange-600 hover:text-orange-700"
+              >
+                All Menu &rarr;
+              </Link>
+            </div>
+
+            <div className="space-y-2.5">
+              {data?.popular_items?.length > 0 ? (
+                data.popular_items.map((entry, idx) => (
+                  <div
+                    key={entry.item.id}
+                    className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50/80 border border-slate-100 hover:bg-slate-100/60 transition-colors"
+                  >
+                    <span className="w-5 text-center font-black text-xs text-slate-400">
+                      #{idx + 1}
                     </span>
+                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-100">
+                      <img
+                        src={entry.item.image || '/placeholder-food.png'}
+                        alt={entry.item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-extrabold text-xs text-slate-900 truncate">
+                        {entry.item.name}
+                      </p>
+                      <p className="text-[11px] text-orange-600 font-bold">
+                        {entry.item.formatted_price}
+                        <span className="text-[10px] text-slate-400 ml-1 font-medium">
+                          ({entry.item.formatted_price_khr})
+                        </span>
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-700 shadow-2xs">
+                        {entry.total_ordered} sold
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400 text-center py-6">
-                No orders recorded yet.
-              </p>
-            )}
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  No orders recorded yet.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200/80 space-y-5 animate-scale-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-lg text-slate-900">
+                    Order #{selectedOrder.order_number}
+                  </h3>
+                  <StatusBadge status={selectedOrder.status} />
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Table {selectedOrder.table_number || 'N/A'} • {selectedOrder.formatted_time}, {selectedOrder.formatted_date}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Guest & Notes Info */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1 text-xs">
+              {selectedOrder.customer_name && (
+                <p>
+                  <span className="font-bold text-slate-500">Customer: </span>
+                  <span className="font-extrabold text-slate-900">{selectedOrder.customer_name}</span>
+                </p>
+              )}
+              {selectedOrder.note && (
+                <p>
+                  <span className="font-bold text-slate-500">Order Note: </span>
+                  <span className="italic text-slate-700">{selectedOrder.note}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Items List */}
+            <div className="space-y-2">
+              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Ordered Items
+              </h4>
+              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto pr-1">
+                {selectedOrder.items?.map((item) => (
+                  <div key={item.id} className="py-2.5 flex justify-between items-start text-xs">
+                    <div>
+                      <p className="font-bold text-slate-800">
+                        {item.item_name} <span className="text-orange-600 font-extrabold">x{item.quantity}</span>
+                      </p>
+                      {item.note && (
+                        <p className="text-[11px] text-slate-400 italic mt-0.5">Note: {item.note}</p>
+                      )}
+                    </div>
+                    <span className="font-black text-slate-900">
+                      ${parseFloat(item.subtotal).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Summary */}
+            <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase text-slate-400">Total Due</p>
+                <p className="text-xs font-bold text-slate-500">
+                  {selectedOrder.formatted_total_khr}
+                </p>
+              </div>
+              <span className="text-2xl font-black text-orange-600">
+                {selectedOrder.formatted_total}
+              </span>
+            </div>
+
+            {/* Advance Status Controls */}
+            <div className="pt-2 flex flex-wrap gap-2 justify-end">
+              {selectedOrder.status !== 'preparing' && selectedOrder.status !== 'completed' && (
+                <button
+                  onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'preparing')}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs"
+                >
+                  Start Cooking
+                </button>
+              )}
+              {selectedOrder.status !== 'ready' && selectedOrder.status !== 'completed' && (
+                <button
+                  onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'ready')}
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs"
+                >
+                  Mark Ready
+                </button>
+              )}
+              {selectedOrder.status !== 'completed' && (
+                <button
+                  onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'completed')}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5"
+                >
+                  <FiCheck className="w-4 h-4 stroke-[3]" />
+                  <span>Mark Completed & Paid</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
