@@ -36,6 +36,65 @@ fi
 # Link storage
 php artisan storage:link --force || true
 
+# Resolve Render short database hostname (dpg-xxx-a) to external regional domain
+if [ -n "$DB_HOST" ]; then
+    case "$DB_HOST" in
+        *.*) ;; # already full hostname
+        dpg-*)
+            echo "Detecting working PostgreSQL host for $DB_HOST..."
+            RESOLVED_HOST=$(php -r '
+                $base = getenv("DB_HOST");
+                $user = getenv("DB_USERNAME");
+                $pass = getenv("DB_PASSWORD");
+                $db   = getenv("DB_DATABASE");
+                $port = getenv("DB_PORT") ?: 5432;
+
+                if (gethostbyname($base) !== $base) {
+                    try {
+                        $dsn = "pgsql:host={$base};port={$port};dbname={$db};sslmode=prefer";
+                        new PDO($dsn, $user, $pass, [PDO::ATTR_TIMEOUT => 2]);
+                        echo $base;
+                        exit(0);
+                    } catch (\Throwable $e) {}
+                }
+
+                foreach (["singapore", "oregon", "frankfurt", "ohio"] as $r) {
+                    $candidate = "{$base}.{$r}-postgres.render.com";
+                    try {
+                        $dsn = "pgsql:host={$candidate};port={$port};dbname={$db};sslmode=require";
+                        new PDO($dsn, $user, $pass, [PDO::ATTR_TIMEOUT => 3]);
+                        echo $candidate;
+                        exit(0);
+                    } catch (\Throwable $e) {}
+                }
+
+                echo "{$base}.singapore-postgres.render.com";
+            ')
+            if [ -n "$RESOLVED_HOST" ]; then
+                export DB_HOST="$RESOLVED_HOST"
+                export DB_SSLMODE="require"
+                echo "Resolved DB_HOST to: $DB_HOST (sslmode=require)"
+            fi
+            ;;
+    esac
+fi
+
+if [ -n "$DATABASE_URL" ]; then
+    CURRENT_HOST=$(echo "$DATABASE_URL" | sed -n 's|.*@\([^:/]*\).*|\1|p')
+    case "$CURRENT_HOST" in
+        *.*) ;;
+        dpg-*)
+            DATABASE_URL=$(echo "$DATABASE_URL" | sed "s|@${CURRENT_HOST}|@${CURRENT_HOST}.singapore-postgres.render.com|")
+            ;;
+    esac
+    case "$DATABASE_URL" in
+        *sslmode=*) ;;
+        *\?*) DATABASE_URL="${DATABASE_URL}&sslmode=require" ;;
+        *)    DATABASE_URL="${DATABASE_URL}?sslmode=require" ;;
+    esac
+    export DATABASE_URL
+fi
+
 # Cache configuration and routes for production performance
 echo "Caching configuration..."
 php artisan config:cache || echo "Warning: config cache failed, continuing..."
@@ -45,12 +104,12 @@ php artisan route:cache || echo "Warning: route cache failed, continuing..."
 if [ -n "$DB_HOST" ] || [ -n "$DATABASE_URL" ]; then
     echo "Database configured, running migrations..."
     for i in 1 2 3 4 5 6 7 8 9 10; do
-        if php artisan migrate --force 2>&1; then
+        if php artisan migrate --force; then
             echo "Database migrations completed successfully!"
-            php artisan db:seed --force 2>&1 || echo "Seeding completed or already seeded."
+            php artisan db:seed --force || echo "Seeding completed or already seeded."
             break
         fi
-        echo "Database not ready yet, retrying in 3 seconds ($i/10)..."
+        echo "Database migration attempt $i/10 failed, retrying in 3 seconds..."
         sleep 3
     done
 fi

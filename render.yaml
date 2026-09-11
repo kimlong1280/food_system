@@ -37,7 +37,7 @@ services:
           name: food-system-db
           property: password
       - key: DB_SSLMODE
-        value: disable
+        value: require
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
@@ -49,9 +49,9 @@ services:
       - key: APP_KEY
         value: "base64:w4JoZ1uAw3ec9Hc+U/5ZkyEREm5LgNeF4GzmTJnNYQY="
       - key: APP_URL
-        sync: false
+        value: "https://food-system-backend-uroh.onrender.com"
       - key: FRONTEND_URL
-        sync: false
+        value: "https://food-system-sk.vercel.app"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID

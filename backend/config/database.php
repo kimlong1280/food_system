@@ -83,20 +83,60 @@ return [
             ]) : [],
         ],
 
-        'pgsql' => [
-            'driver' => 'pgsql',
-            'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => env('DB_CHARSET', 'utf8'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'disable'),
-        ],
+        'pgsql' => (function () {
+            $host = env('DB_HOST', '127.0.0.1');
+            $port = env('DB_PORT', '5432');
+            $sslmode = env('DB_SSLMODE', 'prefer');
+            $url = env('DATABASE_URL');
+
+            // Normalize DATABASE_URL if present
+            if ($url) {
+                $parsed = parse_url($url);
+                if (!empty($parsed['host']) && !str_contains($parsed['host'], '.') && str_starts_with($parsed['host'], 'dpg-')) {
+                    if (gethostbyname($parsed['host']) === $parsed['host']) {
+                        $extHost = $parsed['host'] . '.singapore-postgres.render.com';
+                        $url = str_replace('@' . $parsed['host'], '@' . $extHost, $url);
+                    }
+                }
+                if (!str_contains($url, 'sslmode=')) {
+                    $url .= (str_contains($url, '?') ? '&' : '?') . 'sslmode=require';
+                }
+            }
+
+            // Expand short Render hostname (e.g. dpg-xxx-a) if unresolvable
+            if (!empty($host) && !str_contains($host, '.') && str_starts_with($host, 'dpg-')) {
+                if (gethostbyname($host) === $host) {
+                    $regions = ['singapore', 'oregon', 'frankfurt', 'ohio'];
+                    foreach ($regions as $r) {
+                        $candidate = "{$host}.{$r}-postgres.render.com";
+                        if (gethostbyname($candidate) !== $candidate) {
+                            $host = $candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // External Render Postgres requires SSL
+            if (str_contains($host, '.render.com') || ($url && str_contains($url, '.render.com'))) {
+                $sslmode = 'require';
+            }
+
+            return [
+                'driver' => 'pgsql',
+                'url' => $url,
+                'host' => $host,
+                'port' => $port,
+                'database' => env('DB_DATABASE', 'laravel'),
+                'username' => env('DB_USERNAME', 'root'),
+                'password' => env('DB_PASSWORD', ''),
+                'charset' => env('DB_CHARSET', 'utf8'),
+                'prefix' => '',
+                'prefix_indexes' => true,
+                'search_path' => 'public',
+                'sslmode' => $sslmode,
+            ];
+        })(),
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',

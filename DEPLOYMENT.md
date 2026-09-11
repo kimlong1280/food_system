@@ -11,12 +11,12 @@ Customer & Admin Browsers
          │
          ▼
 [ Vercel (Frontend React SPA) ]
-  URL: https://sreykeo.vercel.app
+  URL: https://food-system-sk.vercel.app
          │
          │ API Requests (VITE_API_URL)
          ▼
 [ Render (Laravel 12 Backend Web Service) ]
-  URL: https://food-system-backend.onrender.com
+  URL: https://food-system-backend-uroh.onrender.com
          │
          ├──► [ Render Free Managed PostgreSQL Database ]
          │
@@ -70,16 +70,16 @@ php artisan db:seed --force
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 5. Under **Environment Variables**, add:
-   - `VITE_API_URL`: `https://food-system-backend.onrender.com/api` (replace with your live Render backend URL)
+    - `VITE_API_URL`: `https://food-system-backend-uroh.onrender.com/api`
 6. Click **Deploy**.
 
-Vercel will build and launch your website with a free SSL certificate (e.g., `https://sreykeo.vercel.app`) in under 60 seconds!
+Vercel will build and launch your website with a free SSL certificate (e.g., `https://food-system-sk.vercel.app`) in under 60 seconds!
 
 ---
 
 ## Step 4: Final Link
 
-1. Copy your live Vercel URL (e.g. `https://sreykeo.vercel.app`).
+1. Copy your live Vercel URL (e.g. `https://food-system-sk.vercel.app`).
 2. Go back to Render > **food-system-backend** > **Environment**.
 3. Update `FRONTEND_URL` to your Vercel URL.
 4. Render will auto-redeploy to apply the updated CORS origin.
