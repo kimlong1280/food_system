@@ -58,15 +58,19 @@ class DashboardController extends Controller
 
         // 4. Tables with live occupancy status for dashboard grid
         $tablesList = Table::orderBy('table_number')->get()->map(function ($table) use ($activeTableIds) {
+            $isOccupied = (bool) ($table->is_occupied ?? false) || $activeTableIds->contains($table->id);
             return [
                 'id' => $table->id,
                 'table_number' => $table->table_number,
                 'name' => $table->name,
                 'capacity' => $table->capacity,
+                'status' => $table->status,
                 'is_active' => $table->status === 'active',
-                'is_occupied' => $activeTableIds->contains($table->id),
+                'is_occupied' => $isOccupied,
             ];
         });
+
+        $activeTablesCount = $tablesList->where('is_occupied', true)->count();
 
         // 5. Recent 12 Orders with eager loading
         $recentOrders = Order::with(['table', 'orderItems'])

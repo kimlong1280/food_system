@@ -89,6 +89,9 @@ class OrderService
                 OrderItem::create($item);
             }
 
+            // Mark table as occupied since a customer is placing an order for it
+            $table->update(['is_occupied' => true]);
+
             // Load relations for response and notification
             $order->load(['table', 'orderItems.menuItem']);
 

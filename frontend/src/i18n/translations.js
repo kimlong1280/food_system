@@ -15,6 +15,13 @@ export const translations = {
     orScanQr: "Or scan your table's QR stand",
     close: 'Close',
     connectedToTable: 'Connected to Table {number}!',
+    tableOccupied: 'Seated',
+    tableAvailable: 'Available',
+    tableCustomerIn: 'Customer In',
+    tableCustomerOut: 'Empty',
+    tableJoinedNotice: 'Table {number} currently has seated diners. You can join and order for this table!',
+    joinTable: 'Join Table',
+    tableSharingAllowed: 'Multiple diners at the same table can order together using the same table number.',
 
     // Language
     language: 'Language',
@@ -215,6 +222,13 @@ export const translations = {
     orScanQr: 'ឬស្កេន QR កូដនៅលើតុរបស់អ្នក',
     close: 'បិទ',
     connectedToTable: 'បានភ្ជាប់ទៅកាន់តុលេខ {number}!',
+    tableOccupied: 'មានភ្ញៀវ',
+    tableAvailable: 'ទំនេរ',
+    tableCustomerIn: 'មានភ្ញៀវអង្គុយ',
+    tableCustomerOut: 'តុទំនេរ',
+    tableJoinedNotice: 'តុលេខ {number} មានភ្ញៀវកំពុងពិសា។ អ្នកអាចចូលរួម និងកុម្ម៉ង់បន្ថែមសម្រាប់តុនេះបាន!',
+    joinTable: 'ចូលតុនេះ',
+    tableSharingAllowed: 'ភ្ញៀវអង្គុយតុជាមួយគ្នា អាចជ្រើសរើសតុតែមួយដើម្បីកុម្ម៉ង់ម្ហូបបន្ថែមបាន។',
 
     // Language
     language: 'ភាសា',

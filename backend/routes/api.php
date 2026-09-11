@@ -187,6 +187,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Tables Management
     Route::apiResource('tables', AdminTableController::class);
     Route::patch('/tables/{table}/toggle-status', [AdminTableController::class, 'toggleStatus']);
+    Route::patch('/tables/{table}/toggle-occupancy', [AdminTableController::class, 'toggleOccupancy']);
 
     // Orders Management
     Route::get('/orders', [AdminOrderController::class, 'index']);

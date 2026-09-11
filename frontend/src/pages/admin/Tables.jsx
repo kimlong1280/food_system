@@ -6,10 +6,11 @@ import {
   FiSearch,
   FiCheckCircle,
   FiXCircle,
-  FiEye,
   FiMapPin,
   FiX,
   FiSmartphone,
+  FiUsers,
+  FiUserCheck,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
@@ -22,6 +23,9 @@ const Tables = () => {
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [occupancyFilter, setOccupancyFilter] = useState('all') // 'all', 'occupied', 'available'
+  const [togglingOccupancyId, setTogglingOccupancyId] = useState(null)
+  const [togglingStatusId, setTogglingStatusId] = useState(null)
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -30,6 +34,7 @@ const Tables = () => {
     table_number: '',
     name: '',
     status: 'active',
+    is_occupied: false,
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -62,6 +67,7 @@ const Tables = () => {
         table_number: tbl.table_number,
         name: tbl.name || '',
         status: tbl.status,
+        is_occupied: Boolean(tbl.is_occupied),
       })
     } else {
       setEditingTable(null)
@@ -70,6 +76,7 @@ const Tables = () => {
         table_number: nextNum,
         name: `Table ${nextNum}`,
         status: 'active',
+        is_occupied: false,
       })
     }
     setIsModalOpen(true)
@@ -100,6 +107,7 @@ const Tables = () => {
 
   // Quick 1-click toggle active/inactive status
   const handleToggleStatus = async (tbl) => {
+    setTogglingStatusId(tbl.id)
     try {
       const res = await api.patch(`/admin/tables/${tbl.id}/toggle-status`)
       setTables((prev) =>
@@ -107,7 +115,26 @@ const Tables = () => {
       )
       toast.success(res.data.message)
     } catch {
-      toast.error('Failed to toggle status.')
+      toast.error('Failed to toggle active status.')
+    } finally {
+      setTogglingStatusId(null)
+    }
+  }
+
+  // Quick 1-click toggle occupancy status (Customer In vs Available)
+  const handleToggleOccupancy = async (tbl) => {
+    setTogglingOccupancyId(tbl.id)
+    try {
+      const res = await api.patch(`/admin/tables/${tbl.id}/toggle-occupancy`)
+      const newOccupied = Boolean(res.data.table.is_occupied)
+      setTables((prev) =>
+        prev.map((t) => (t.id === tbl.id ? { ...t, is_occupied: newOccupied } : t))
+      )
+      toast.success(res.data.message)
+    } catch {
+      toast.error('Failed to update table customer occupancy.')
+    } finally {
+      setTogglingOccupancyId(null)
     }
   }
 
@@ -129,13 +156,25 @@ const Tables = () => {
     }
   }
 
-  const filteredTables = tables.filter((t) => {
-    const q = searchQuery.toLowerCase()
-    return t.table_number.toLowerCase().includes(q) || (t.name || '').toLowerCase().includes(q)
-  })
-
   const activeTablesCount = tables.filter((t) => t.status === 'active').length
   const inactiveTablesCount = tables.filter((t) => t.status !== 'active').length
+  const occupiedTablesCount = tables.filter((t) => t.is_occupied).length
+  const availableTablesCount = tables.filter((t) => !t.is_occupied && t.status === 'active').length
+
+  const filteredTables = tables.filter((t) => {
+    const q = searchQuery.toLowerCase()
+    const matchesQuery =
+      t.table_number.toLowerCase().includes(q) || (t.name || '').toLowerCase().includes(q)
+
+    const matchesOccupancy =
+      occupancyFilter === 'all'
+        ? true
+        : occupancyFilter === 'occupied'
+        ? Boolean(t.is_occupied)
+        : !t.is_occupied
+
+    return matchesQuery && matchesOccupancy
+  })
 
   if (loading) return <PageLoading text="Loading tables & QR codes..." />
 
@@ -146,16 +185,21 @@ const Tables = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Tables & QR Codes
+              Tables & Seating
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
               {tables.length} tables
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-            <span>Active: <strong className="text-emerald-600">{activeTablesCount}</strong></span>
-            <span>•</span>
-            <span>Inactive: <strong className="text-slate-400">{inactiveTablesCount}</strong></span>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
+            <span className="inline-flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+              👥 Seated: <strong className="font-black text-amber-900">{occupiedTablesCount}</strong>
+            </span>
+            <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              🪑 Free: <strong className="font-black text-emerald-900">{availableTablesCount}</strong>
+            </span>
+            <span className="text-slate-400">•</span>
+            <span>Active: <strong className="text-slate-700">{activeTablesCount}</strong></span>
           </div>
         </div>
 
@@ -168,26 +212,84 @@ const Tables = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative max-w-md">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-          <FiSearch className="w-4 h-4" />
-        </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search tables by number or area name..."
-          className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
-        />
-        {searchQuery && (
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Quick Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
           <button
-            onClick={() => setSearchQuery('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+            type="button"
+            onClick={() => setOccupancyFilter('all')}
+            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+              occupancyFilter === 'all'
+                ? 'bg-orange-600 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
           >
-            <FiX className="w-4 h-4" />
+            All Tables ({tables.length})
           </button>
-        )}
+          <button
+            type="button"
+            onClick={() => setOccupancyFilter('occupied')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+              occupancyFilter === 'occupied'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <span>👥 Customer In</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                occupancyFilter === 'occupied'
+                  ? 'bg-amber-700 text-white'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {occupiedTablesCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setOccupancyFilter('available')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+              occupancyFilter === 'available'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <span>🪑 Available</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                occupancyFilter === 'available'
+                  ? 'bg-emerald-700 text-white'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {availableTablesCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:max-w-xs">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <FiSearch className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search table # or area..."
+            className="w-full pl-10 pr-9 py-2 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <FiX className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -199,11 +301,15 @@ const Tables = () => {
             <div
               key={tbl.id}
               className={`bg-white rounded-3xl p-4 border transition-all shadow-xs space-y-3 ${
-                tbl.status !== 'active' ? 'border-slate-200 bg-slate-50/60 opacity-85' : 'border-slate-200/80'
+                tbl.status !== 'active'
+                  ? 'border-slate-200 bg-slate-50/60 opacity-85'
+                  : tbl.is_occupied
+                  ? 'border-amber-300 ring-1 ring-amber-300/40'
+                  : 'border-slate-200/80'
               }`}
             >
-              {/* Header: Table Pill, Area Name & Status */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              {/* Header: Table Pill, Area Name & Active Status */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-600 text-white font-black text-xs shadow-2xs">
                     <FiMapPin className="w-3.5 h-3.5" />
@@ -214,9 +320,10 @@ const Tables = () => {
                   </span>
                 </div>
 
-                {/* 1-Tap Status Switch */}
+                {/* 1-Tap Active/Inactive Status Switch */}
                 <button
                   type="button"
+                  disabled={togglingStatusId === tbl.id}
                   onClick={() => handleToggleStatus(tbl)}
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all cursor-pointer active:scale-95 ${
                     tbl.status === 'active'
@@ -228,7 +335,44 @@ const Tables = () => {
                 </button>
               </div>
 
-              {/* Table Info & Orders */}
+              {/* 1-Tap Occupancy Management for Staff on Smartphone */}
+              <div className="p-2.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-extrabold text-slate-500">Seating:</span>
+                  {tbl.is_occupied ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-[11px] border border-amber-300 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span>👥 Customer In</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[11px] border border-emerald-300 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span>🪑 Available</span>
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={togglingOccupancyId === tbl.id}
+                  onClick={() => handleToggleOccupancy(tbl)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 shadow-xs flex items-center gap-1 ${
+                    tbl.is_occupied
+                      ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white'
+                  }`}
+                >
+                  {togglingOccupancyId === tbl.id ? (
+                    <span>Updating...</span>
+                  ) : tbl.is_occupied ? (
+                    <span>Mark Available</span>
+                  ) : (
+                    <span>Mark Customer In</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Table Info & Orders Count */}
               <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
                 <span>Orders recorded:</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-extrabold text-slate-700 text-xs">
@@ -278,21 +422,27 @@ const Tables = () => {
       {/* ========================================================================= */}
       <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[650px]">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
                 <th className="py-3.5 px-4 font-bold">Table #</th>
                 <th className="py-3.5 px-4 font-bold">Location / Area Name</th>
-                <th className="py-3.5 px-4 font-bold">Total Orders</th>
-                <th className="py-3.5 px-4 font-bold text-center">Status</th>
-                <th className="py-3.5 px-4 font-bold text-center">QR Code</th>
+                <th className="py-3.5 px-4 font-bold text-center">Dining Seating Status</th>
+                <th className="py-3.5 px-4 font-bold text-center">Active Status</th>
+                <th className="py-3.5 px-4 font-bold text-center">Orders</th>
+                <th className="py-3.5 px-4 font-bold text-center">QR Standee</th>
                 <th className="py-3.5 px-4 font-bold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTables.length > 0 ? (
                 filteredTables.map((tbl) => (
-                  <tr key={tbl.id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr
+                    key={tbl.id}
+                    className={`hover:bg-slate-50/70 transition-colors ${
+                      tbl.is_occupied ? 'bg-amber-50/25' : ''
+                    }`}
+                  >
                     <td className="py-3 px-4 font-black text-slate-900 text-sm">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-50 text-orange-700 font-extrabold border border-orange-200">
                         <FiMapPin className="w-3.5 h-3.5" />
@@ -300,23 +450,50 @@ const Tables = () => {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-slate-700 font-semibold">
-                      {tbl.name || <span className="text-slate-400 font-normal italic">Standard Dining</span>}
+                      {tbl.name || (
+                        <span className="text-slate-400 font-normal italic">Standard Dining</span>
+                      )}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-bold text-slate-700">
-                        {tbl.orders_count || 0} orders
-                      </span>
-                    </td>
+
+                    {/* Dining Seating Status 1-Click Toggle */}
                     <td className="py-3 px-4 text-center">
                       <button
                         type="button"
+                        disabled={togglingOccupancyId === tbl.id}
+                        onClick={() => handleToggleOccupancy(tbl)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                          tbl.is_occupied
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                        }`}
+                        title="Click to toggle Customer In / Available"
+                      >
+                        {tbl.is_occupied ? (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            <span>👥 Customer In</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>🪑 Available</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+
+                    {/* Active / Inactive Status */}
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        type="button"
+                        disabled={togglingStatusId === tbl.id}
                         onClick={() => handleToggleStatus(tbl)}
                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
                           tbl.status === 'active'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                         }`}
-                        title="Click to toggle status"
+                        title="Click to toggle active status"
                       >
                         {tbl.status === 'active' ? (
                           <>
@@ -331,6 +508,15 @@ const Tables = () => {
                         )}
                       </button>
                     </td>
+
+                    {/* Total Orders */}
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-bold text-slate-700">
+                        {tbl.orders_count || 0}
+                      </span>
+                    </td>
+
+                    {/* QR Standee */}
                     <td className="py-3 px-4 text-center">
                       <button
                         onClick={() => setViewingQRTable(tbl)}
@@ -340,6 +526,8 @@ const Tables = () => {
                         <span>View QR</span>
                       </button>
                     </td>
+
+                    {/* Action Buttons */}
                     <td className="py-3 px-4 text-right space-x-1">
                       <button
                         onClick={() => handleOpenModal(tbl)}
@@ -360,7 +548,7 @@ const Tables = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     No tables found.
                   </td>
                 </tr>
@@ -404,18 +592,36 @@ const Tables = () => {
             />
           </div>
 
-          <div>
-            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
-            >
-              <option value="active">Active (Available for customer orders)</option>
-              <option value="inactive">Inactive (Disabled / Under Maintenance)</option>
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Customer Dining Status
+              </label>
+              <select
+                value={formData.is_occupied ? 'true' : 'false'}
+                onChange={(e) =>
+                  setFormData({ ...formData, is_occupied: e.target.value === 'true' })
+                }
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer font-bold"
+              >
+                <option value="false">🪑 Available (No Customer)</option>
+                <option value="true">👥 Customer In (Occupied)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Active Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer font-bold"
+              >
+                <option value="active">🟢 Active</option>
+                <option value="inactive">⚪ Inactive</option>
+              </select>
+            </div>
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">

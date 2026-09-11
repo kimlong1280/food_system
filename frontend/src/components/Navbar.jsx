@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiShoppingBag, FiMapPin, FiX, FiCheck, FiDollarSign } from 'react-icons/fi'
+import { FiShoppingBag, FiMapPin, FiX, FiCheck, FiDollarSign, FiUsers } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import { useCart } from '../context/CartContext'
@@ -17,23 +17,28 @@ const Navbar = () => {
 
   const handleOpenModal = async () => {
     setShowTableModal(true)
-    if (availableTables.length === 0) {
-      setLoadingTables(true)
-      try {
-        const res = await api.get('/tables')
-        setAvailableTables(res.data.data || [])
-      } catch {
-        // ignore
-      } finally {
-        setLoadingTables(false)
-      }
+    setLoadingTables(true)
+    try {
+      const res = await api.get('/tables')
+      setAvailableTables(res.data.data || [])
+    } catch {
+      // ignore
+    } finally {
+      setLoadingTables(false)
     }
   }
 
   const handleSelectTable = (tbl) => {
     setTableInfo(tbl)
     setShowTableModal(false)
-    toast.success(t('connectedToTable', { number: tbl.table_number }))
+    if (tbl.is_occupied) {
+      toast.success(t('tableJoinedNotice', { number: tbl.table_number }), {
+        duration: 4500,
+        icon: '👥',
+      })
+    } else {
+      toast.success(t('connectedToTable', { number: tbl.table_number }))
+    }
   }
 
   return (
@@ -266,25 +271,45 @@ const Navbar = () => {
               {t('tableModalSubtitle')}
             </p>
 
+            <div className="p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
+              <FiUsers className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{t('tableSharingAllowed')}</span>
+            </div>
+
             {loadingTables ? (
               <div className="py-8 text-center text-xs text-slate-400">{t('loadingTables')}</div>
             ) : (
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 sm:gap-2.5 max-h-60 sm:max-h-80 overflow-y-auto pr-1">
                 {availableTables.map((tbl) => {
                   const isCurrent = table?.id === tbl.id
+                  const isOccupied = Boolean(tbl.is_occupied)
                   return (
                     <button
                       key={tbl.id}
                       type="button"
                       onClick={() => handleSelectTable(tbl)}
-                      className={`p-2 sm:p-2.5 rounded-2xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      title={isOccupied ? `Table ${tbl.table_number} - Seated (Tap to join)` : `Table ${tbl.table_number} - Available`}
+                      className={`p-2 sm:p-2.5 rounded-2xl border text-center transition-all active:scale-95 flex flex-col items-center justify-center gap-1 cursor-pointer relative ${
                         isCurrent
                           ? 'border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-500/20 font-black'
+                          : isOccupied
+                          ? 'border-amber-300/90 bg-amber-50/60 hover:bg-amber-100 hover:border-amber-400 text-slate-800 font-bold'
                           : 'border-slate-200 bg-slate-50 hover:bg-orange-50/50 hover:border-orange-300 text-slate-800 font-bold'
                       }`}
                     >
-                      <span className="text-xs font-bold">T-{tbl.table_number}</span>
-                      {isCurrent && <FiCheck className="w-3.5 h-3.5 text-orange-600" />}
+                      <span className="text-xs font-black">T-{tbl.table_number}</span>
+                      {isCurrent ? (
+                        <FiCheck className="w-3.5 h-3.5 text-orange-600" />
+                      ) : isOccupied ? (
+                        <span className="text-[8px] sm:text-[9px] font-black text-amber-800 bg-amber-200/70 px-1.5 py-0.5 rounded-full flex items-center gap-0.5 leading-none">
+                          <span>👥</span>
+                          <span>{t('tableOccupied')}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[8px] sm:text-[9px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full leading-none">
+                          {t('tableAvailable')}
+                        </span>
+                      )}
                     </button>
                   )
                 })}

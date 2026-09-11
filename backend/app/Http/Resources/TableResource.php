@@ -18,6 +18,7 @@ class TableResource extends JsonResource
             'name' => $this->name,
             'status' => $this->status,
             'is_active' => $this->status === 'active',
+            'is_occupied' => (bool) ($this->is_occupied ?? false),
             'qr_code' => $this->qr_code ? asset('storage/' . $this->qr_code) : null,
             'menu_url' => $qrUrl,
             'orders_count' => $this->whenCounted('orders'),

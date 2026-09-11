@@ -86,6 +86,22 @@ class TableController extends Controller
     }
 
     /**
+     * Toggle table occupancy between occupied (customer in) and available.
+     */
+    public function toggleOccupancy(Table $table): JsonResponse
+    {
+        $newOccupied = !$table->is_occupied;
+        $table->update(['is_occupied' => $newOccupied]);
+
+        $stateMsg = $newOccupied ? 'Customer Seated (Occupied)' : 'Available (Empty)';
+
+        return response()->json([
+            'message' => "Table {$table->table_number} marked as {$stateMsg}.",
+            'table' => new TableResource($table),
+        ]);
+    }
+
+    /**
      * Delete table.
      */
     public function destroy(Table $table): JsonResponse

@@ -17,6 +17,7 @@ class StoreTableRequest extends FormRequest
             'table_number' => 'required|string|max:50|unique:tables,table_number',
             'name' => 'nullable|string|max:100',
             'status' => 'required|in:active,inactive',
+            'is_occupied' => 'nullable|boolean',
         ];
     }
 }

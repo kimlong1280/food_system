@@ -15,6 +15,11 @@ class Table extends Model
         'name',
         'status',
         'qr_code',
+        'is_occupied',
+    ];
+
+    protected $casts = [
+        'is_occupied' => 'boolean',
     ];
 
     /**

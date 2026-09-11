@@ -58,7 +58,14 @@ const Checkout = () => {
 
   const handleSelectTable = (selectedTable) => {
     setTableInfo(selectedTable)
-    toast.success(t('connectedToTable', { number: selectedTable.table_number }))
+    if (selectedTable.is_occupied) {
+      toast.success(t('tableJoinedNotice', { number: selectedTable.table_number }), {
+        duration: 4500,
+        icon: '👥',
+      })
+    } else {
+      toast.success(t('connectedToTable', { number: selectedTable.table_number }))
+    }
   }
 
   const handlePlaceOrder = async (e) => {
@@ -168,24 +175,46 @@ const Checkout = () => {
 
             {/* Quick Table Selection if no table was scanned via QR */}
             {!table && (
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <p className="text-xs font-bold text-slate-800">
-                  {t('whichTableSeated')}
-                </p>
+              <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-800">
+                    {t('whichTableSeated')}
+                  </p>
+                  <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 font-semibold">
+                    👥 {t('tableSharingAllowed')}
+                  </span>
+                </div>
                 {loadingTables ? (
                   <p className="text-xs text-slate-400">{t('loadingTables')}</p>
                 ) : (
                   <div className="grid grid-cols-3 min-[400px]:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {availableTables.map((tbl) => (
-                      <button
-                        key={tbl.id}
-                        type="button"
-                        onClick={() => handleSelectTable(tbl)}
-                        className="py-2.5 px-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-orange-500 hover:text-white hover:border-orange-500 hover:scale-105 hover:shadow-md hover:shadow-orange-500/25 text-slate-800 font-extrabold text-xs transition-all duration-200 active:scale-95 text-center cursor-pointer"
-                      >
-                        T-{tbl.table_number}
-                      </button>
-                    ))}
+                    {availableTables.map((tbl) => {
+                      const isOccupied = Boolean(tbl.is_occupied)
+                      return (
+                        <button
+                          key={tbl.id}
+                          type="button"
+                          onClick={() => handleSelectTable(tbl)}
+                          title={isOccupied ? `Table ${tbl.table_number} - Seated (Click to join)` : `Table ${tbl.table_number} - Available`}
+                          className={`py-2 px-1.5 rounded-xl border text-center font-extrabold text-xs transition-all duration-200 active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                            isOccupied
+                              ? 'border-amber-300 bg-amber-50/70 hover:bg-amber-100 hover:border-amber-400 text-amber-950 shadow-2xs'
+                              : 'border-slate-200 bg-slate-50 hover:bg-orange-500 hover:text-white hover:border-orange-500 hover:scale-105'
+                          }`}
+                        >
+                          <span>T-{tbl.table_number}</span>
+                          {isOccupied ? (
+                            <span className="text-[9px] font-bold text-amber-800 bg-amber-200/70 px-1.5 py-0.2 rounded-full leading-none">
+                              👥 {t('tableOccupied')}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-medium text-emerald-700 bg-emerald-100/60 px-1 py-0.2 rounded-full leading-none">
+                              {t('tableAvailable')}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
                 <p className="text-[11px] text-slate-500">
@@ -195,15 +224,25 @@ const Checkout = () => {
             )}
 
             {table && (
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-500">{table.name || t('dineInArea')}</span>
-                <button
-                  type="button"
-                  onClick={() => setTableInfo(null)}
-                  className="text-orange-600 hover:text-orange-700 font-semibold cursor-pointer"
-                >
-                  {t('changeTable')}
-                </button>
+              <div className="pt-2.5 border-t border-slate-100 space-y-2 text-xs">
+                {table.is_occupied && (
+                  <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+                    <span className="text-base">👥</span>
+                    <span className="font-medium">
+                      {t('tableJoinedNotice', { number: table.table_number })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">{table.name || t('dineInArea')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setTableInfo(null)}
+                    className="text-orange-600 hover:text-orange-700 font-bold cursor-pointer"
+                  >
+                    {t('changeTable')}
+                  </button>
+                </div>
               </div>
             )}
           </div>

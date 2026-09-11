@@ -26,6 +26,7 @@ class UpdateTableRequest extends FormRequest
             ],
             'name' => 'nullable|string|max:100',
             'status' => 'sometimes|required|in:active,inactive',
+            'is_occupied' => 'nullable|boolean',
         ];
     }
 }
