@@ -63,6 +63,10 @@ const MenuItems = () => {
     fetchData()
   }, [])
 
+  const KHR_RATE = 4000
+  const [priceCurrency, setPriceCurrency] = useState('USD') // 'USD' | 'KHR'
+  const [khrPrice, setKhrPrice] = useState('')
+
   const handleOpenModal = (item = null) => {
     if (item) {
       setEditingItem(item)
@@ -76,6 +80,8 @@ const MenuItems = () => {
         is_available: item.is_available,
         is_featured: item.is_featured,
       })
+      setPriceCurrency('USD')
+      setKhrPrice(Math.round(Number(item.price) * KHR_RATE).toString())
     } else {
       setEditingItem(null)
       setFormData({
@@ -88,9 +94,29 @@ const MenuItems = () => {
         is_available: true,
         is_featured: false,
       })
+      setPriceCurrency('USD')
+      setKhrPrice('')
     }
     setImageFile(null)
     setIsModalOpen(true)
+  }
+
+  const handleUsdChange = (val) => {
+    setFormData((prev) => ({ ...prev, price: val }))
+    if (val && !isNaN(val)) {
+      setKhrPrice(Math.round(Number(val) * KHR_RATE).toString())
+    } else {
+      setKhrPrice('')
+    }
+  }
+
+  const handleKhrChange = (val) => {
+    setKhrPrice(val)
+    if (val && !isNaN(val)) {
+      setFormData((prev) => ({ ...prev, price: (Number(val) / KHR_RATE).toFixed(2) }))
+    } else {
+      setFormData((prev) => ({ ...prev, price: '' }))
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -301,8 +327,13 @@ const MenuItems = () => {
                         {item.category_name}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-black text-orange-600 text-sm">
-                      {item.formatted_price}
+                    <td className="py-3 px-4">
+                      <div className="font-black text-orange-600 text-sm">
+                        {item.formatted_price}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-500">
+                        {item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold uppercase text-slate-600">
@@ -440,19 +471,121 @@ const MenuItems = () => {
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Price ($ USD) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              required
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              placeholder="4.50"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                {priceCurrency === 'USD' ? 'Price ($ USD) *' : 'Price (៛ KHR / រៀល) *'}
+              </label>
+
+              {/* Currency Selector Toggle */}
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPriceCurrency('USD')}
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    priceCurrency === 'USD'
+                      ? 'bg-white text-orange-600 shadow-2xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  💵 USD ($)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPriceCurrency('KHR')
+                    if (!khrPrice && formData.price) {
+                      setKhrPrice(Math.round(Number(formData.price) * KHR_RATE).toString())
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-md transition-all ${
+                    priceCurrency === 'KHR'
+                      ? 'bg-white text-orange-600 shadow-2xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  🇰🇭 KHR (៛)
+                </button>
+              </div>
+            </div>
+
+            {priceCurrency === 'USD' ? (
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-400 font-bold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  value={formData.price}
+                  onChange={(e) => handleUsdChange(e.target.value)}
+                  placeholder="2.50"
+                  className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 text-sm font-bold"
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="number"
+                  step="100"
+                  min="100"
+                  required
+                  value={khrPrice}
+                  onChange={(e) => handleKhrChange(e.target.value)}
+                  placeholder="10000"
+                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 text-sm font-bold"
+                />
+                <span className="absolute right-3 top-2.5 text-slate-400 font-bold">៛</span>
+              </div>
+            )}
+
+            {/* Quick KHR Presets */}
+            {priceCurrency === 'KHR' && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                <span className="text-[10px] text-slate-400 font-semibold mr-0.5">រហ័ស (Quick):</span>
+                {[4000, 6000, 8000, 10000, 12000, 15000, 20000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => handleKhrChange(amt.toString())}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                      khrPrice === amt.toString()
+                        ? 'bg-orange-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600'
+                    }`}
+                  >
+                    {amt.toLocaleString()}៛
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Live Conversion Preview */}
+            <div className="mt-2 flex items-center justify-between text-[11px] p-2 bg-orange-50/70 border border-orange-100 rounded-xl text-orange-900">
+              <span className="font-medium">
+                {priceCurrency === 'USD' ? (
+                  <>
+                    សមមូលជារៀល:{' '}
+                    <strong className="font-extrabold text-orange-900">
+                      {formData.price && !isNaN(formData.price)
+                        ? `${Math.round(Number(formData.price) * KHR_RATE).toLocaleString()} ៛`
+                        : '0 ៛'}
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    សមមូលជាដុល្លារ:{' '}
+                    <strong className="font-extrabold text-orange-900">
+                      {khrPrice && !isNaN(khrPrice)
+                        ? `$${(Number(khrPrice) / KHR_RATE).toFixed(2)} USD`
+                        : '$0.00 USD'}
+                    </strong>
+                  </>
+                )}
+              </span>
+              <span className="text-[10px] text-orange-600/80 font-bold">
+                (អត្រា $1 = 4,000 ៛)
+              </span>
+            </div>
           </div>
 
           <div>

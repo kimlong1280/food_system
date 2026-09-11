@@ -108,9 +108,14 @@ const FoodDetails = () => {
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{item.name}</h1>
               </div>
-              <span className="text-2xl sm:text-3xl font-black text-orange-600 shrink-0">
-                {item.formatted_price}
-              </span>
+              <div className="text-right shrink-0">
+                <span className="text-2xl sm:text-3xl font-black text-orange-600 block">
+                  {item.formatted_price}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-slate-400 block">
+                  {item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`}
+                </span>
+              </div>
             </div>
 
             <p className="text-sm text-slate-600 leading-relaxed">

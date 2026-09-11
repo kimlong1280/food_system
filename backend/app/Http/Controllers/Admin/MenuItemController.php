@@ -55,6 +55,19 @@ class MenuItemController extends Controller
     {
         $data = $request->validated();
 
+        // Convert Khmer Riel to USD (Exchange Rate: $1 = 4,000 KHR)
+        if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
+            $data['price'] = round((float) $data['price'] / 4000, 2);
+        } elseif ((float) $data['price'] > 500) {
+            // Auto-detect if price was entered directly in Riel without currency tag
+            $data['price'] = round((float) $data['price'] / 4000, 2);
+        }
+        unset($data['currency']);
+
+        if ($data['price'] < 0.01) {
+            $data['price'] = 0.01;
+        }
+
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('menu_items', 'public');
             $data['image'] = $path;
@@ -84,6 +97,19 @@ class MenuItemController extends Controller
     public function update(UpdateMenuItemRequest $request, MenuItem $menuItem): JsonResponse
     {
         $data = $request->validated();
+
+        // Convert Khmer Riel to USD (Exchange Rate: $1 = 4,000 KHR)
+        if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
+            $data['price'] = round((float) $data['price'] / 4000, 2);
+        } elseif (isset($data['price']) && (float) $data['price'] > 500) {
+            // Auto-detect if price was entered directly in Riel without currency tag
+            $data['price'] = round((float) $data['price'] / 4000, 2);
+        }
+        unset($data['currency']);
+
+        if (isset($data['price']) && $data['price'] < 0.01) {
+            $data['price'] = 0.01;
+        }
 
         if ($request->hasFile('image_file')) {
             if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {

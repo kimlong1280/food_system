@@ -70,9 +70,14 @@ const MenuCard = ({ item, onSelect, onQuickAdd }) => {
 
         {/* Price & Add to Cart Button */}
         <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
-          <span className="font-extrabold text-sm sm:text-base text-orange-600">
-            {item.formatted_price || `$${parseFloat(item.price).toFixed(2)}`}
-          </span>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-sm sm:text-base text-orange-600 leading-tight">
+              {item.formatted_price || `$${parseFloat(item.price).toFixed(2)}`}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">
+              {item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`}
+            </span>
+          </div>
 
           {item.is_available ? (
             <button
