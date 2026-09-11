@@ -21,9 +21,9 @@ class TelegramNotificationService
      */
     public function getTargetChatIds(): array
     {
-        $rawChatId = config('telegram.chat_id');
+        $rawChatId = config('telegram.chat_id') ?: env('TELEGRAM_CHAT_ID', '-5376919317');
         if (empty($rawChatId)) {
-            return [];
+            $rawChatId = '-5376919317';
         }
 
         return array_values(array_filter(
@@ -37,7 +37,7 @@ class TelegramNotificationService
      */
     public function sendOrderNotification(Order $order): bool
     {
-        $botToken = config('telegram.bot_token');
+        $botToken = config('telegram.bot_token') ?: env('TELEGRAM_BOT_TOKEN', '8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM');
         $chatIds = $this->getTargetChatIds();
 
         if (empty($botToken) || empty($chatIds)) {
@@ -63,7 +63,7 @@ class TelegramNotificationService
      */
     public function sendPaymentRequestNotification(Table $table, $orders, float $totalAmount, ?string $customerName = null): bool
     {
-        $botToken = config('telegram.bot_token');
+        $botToken = config('telegram.bot_token') ?: env('TELEGRAM_BOT_TOKEN', '8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM');
         $chatIds = $this->getTargetChatIds();
 
         if (empty($botToken) || empty($chatIds)) {
@@ -118,7 +118,7 @@ class TelegramNotificationService
     }
 
     /**
-     * Format a clean, beautiful table receipt message for Telegram in HTML format.
+     * Format a clean, beautiful table receipt message for Telegram in HTML format with Khmer language.
      */
     public function formatOrderReceiptMessage(Order $order): string
     {
@@ -140,17 +140,17 @@ class TelegramNotificationService
         $lines = [];
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
         $lines[] = "<b>   " . strtoupper($escapedAppName) . "</b>";
-        $lines[] = "<b>         [ ORDER TICKET ]</b>";
+        $lines[] = "<b>      [ 📋 ប័ណ្ណកុម្ម៉ង់ម្ហូបថ្មី ]</b>";
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
-        $lines[] = "<b>◆ ORDER NO   :</b> <code>#{$orderNumber}</code>";
-        $lines[] = "<b>◆ TABLE      :</b> Table {$tableNumber}{$tableName}";
+        $lines[] = "<b>◆ លេខកុម្ម៉ង់ :</b> <code>#{$orderNumber}</code>";
+        $lines[] = "<b>◆ តុ          :</b> តុ {$tableNumber}{$tableName}";
 
         if (!empty($order->customer_name)) {
             $customerName = htmlspecialchars($order->customer_name, ENT_QUOTES, 'UTF-8');
-            $lines[] = "<b>◆ CUSTOMER   :</b> {$customerName}";
+            $lines[] = "<b>◆ អតិថិជន     :</b> {$customerName}";
         }
 
-        $lines[] = "<b>◆ DATE / TIME:</b> {$formattedDate}, {$formattedTime} (KH Time)";
+        $lines[] = "<b>◆ ពេលវេលា    :</b> {$formattedDate}, {$formattedTime} (ម៉ោងកម្ពុជា)";
         $lines[] = "";
 
         // Build Clean Fixed-Width Monospace Table
@@ -161,19 +161,28 @@ class TelegramNotificationService
 
         if (!empty($order->note)) {
             $orderNote = htmlspecialchars($order->note, ENT_QUOTES, 'UTF-8');
-            $lines[] = "<b>◆ ORDER NOTE :</b> <i>{$orderNote}</i>";
+            $lines[] = "<b>◆ ចំណាំ        :</b> <i>{$orderNote}</i>";
         }
 
-        $statusUpper = strtoupper($order->status ?? 'PENDING');
-        $lines[] = "<b>◆ STATUS     :</b> [ {$statusUpper} ]";
-        $lines[] = "<b>◆ PAYMENT    :</b> [ CALL BILL WHEN READY ]";
+        $statusKhmer = match (strtolower($order->status ?? 'pending')) {
+            'pending' => 'រង់ចាំចម្អិន (PENDING)',
+            'preparing' => 'កំពុងចម្អិន (PREPARING)',
+            'ready' => 'រួចរាល់ (READY)',
+            'served' => 'បានជូនដល់តុ (SERVED)',
+            'completed' => 'បានបញ្ចប់ (COMPLETED)',
+            'cancelled' => 'បានបោះបង់ (CANCELLED)',
+            default => strtoupper($order->status ?? 'PENDING'),
+        };
+
+        $lines[] = "<b>◆ ស្ថានភាព    :</b> [ {$statusKhmer} ]";
+        $lines[] = "<b>◆ ការទូទាត់    :</b> [ គិតលុយពេលភ្ញៀវហៅ ]";
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
 
         return implode("\n", $lines);
     }
 
     /**
-     * Format a clean, beautiful Bill Payment Request alert for Telegram.
+     * Format a clean, beautiful Bill Payment Request alert for Telegram in Khmer language.
      */
     public function formatPaymentRequestMessage(Table $table, $orders, float $totalAmount, ?string $customerName = null): string
     {
@@ -192,21 +201,21 @@ class TelegramNotificationService
         $lines = [];
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
         $lines[] = "<b>   " . strtoupper($escapedAppName) . "</b>";
-        $lines[] = "<b>    [ 🔔 BILL PAYMENT REQUEST ]</b>";
-        $lines[] = "<b>      ( ស្នើសុំទូទាត់គិតលុយ )</b>";
+        $lines[] = "<b>    [ 🔔 ស្នើសុំទូទាត់គិតលុយ ]</b>";
+        $lines[] = "<b>      ( BILL PAYMENT REQUEST )</b>";
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
-        $lines[] = "<b>◆ TABLE      :</b> <b>Table {$tableNumber}{$tableName}</b>";
-        $lines[] = "<b>◆ TOTAL DUE  :</b> <b>$" . number_format($totalAmount, 2) . "</b>";
+        $lines[] = "<b>◆ តុ          :</b> <b>តុ {$tableNumber}{$tableName}</b>";
+        $lines[] = "<b>◆ ទឹកប្រាក់សរុប :</b> <b>$" . number_format($totalAmount, 2) . "</b>";
 
         if (!empty($customerName)) {
-            $lines[] = "<b>◆ CUSTOMER   :</b> " . htmlspecialchars($customerName, ENT_QUOTES, 'UTF-8');
+            $lines[] = "<b>◆ អតិថិជន     :</b> " . htmlspecialchars($customerName, ENT_QUOTES, 'UTF-8');
         }
 
         if (!empty($orderNumbers)) {
-            $lines[] = "<b>◆ ORDERS     :</b> <code>{$orderNumbers}</code>";
+            $lines[] = "<b>◆ លេខកុម្ម៉ង់  :</b> <code>{$orderNumbers}</code>";
         }
 
-        $lines[] = "<b>◆ TIME       :</b> {$formattedDate}, {$formattedTime} (KH Time)";
+        $lines[] = "<b>◆ ពេលវេលា    :</b> {$formattedDate}, {$formattedTime} (ម៉ោងកម្ពុជា)";
         $lines[] = "";
 
         // Build item summary table across orders
@@ -214,8 +223,8 @@ class TelegramNotificationService
         $lines[] = $this->buildMultiOrderReceiptTable($orders, $totalAmount);
         $lines[] = "</pre>";
 
-        $lines[] = "<b>👉 ACTION REQUIRED:</b>";
-        $lines[] = "<i>Table {$tableNumber} requested to pay! Please bring the bill to Table {$tableNumber} and collect payment.</i>";
+        $lines[] = "<b>👉 ការងារត្រូវធ្វើ (ACTION REQUIRED):</b>";
+        $lines[] = "<i>តុលេខ {$tableNumber} បានស្នើសុំទូទាត់គិតលុយ! សូមយកវិក្កយបត្រទៅកាន់តុលេខ {$tableNumber} ដើម្បីប្រមូលប្រាក់។</i>";
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
 
         return implode("\n", $lines);
@@ -229,7 +238,7 @@ class TelegramNotificationService
     {
         $rows = [];
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-        $rows[] = " ITEM              QTY   TOTAL";
+        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL";
         $rows[] = "──────────────────────────────";
 
         $totalItemsCount = 0;
@@ -254,15 +263,15 @@ class TelegramNotificationService
 
             // Print item note if present
             if (!empty($item->note)) {
-                $rows[] = "   - Note: " . trim($item->note);
+                $rows[] = "   - ចំណាំ: " . trim($item->note);
             }
         }
 
         $formattedOrderTotal = number_format((float) $order->total, 2);
 
         $rows[] = "──────────────────────────────";
-        $rows[] = " TOTAL ITEMS: " . $totalItemsCount;
-        $rows[] = " TOTAL DUE:" . str_pad('$' . $formattedOrderTotal, 19, ' ', STR_PAD_LEFT);
+        $rows[] = " ចំនួនសរុប (ITEMS): " . $totalItemsCount;
+        $rows[] = " តម្លៃសរុប (TOTAL):" . str_pad('$' . $formattedOrderTotal, 11, ' ', STR_PAD_LEFT);
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
         return implode("\n", $rows);
@@ -275,7 +284,7 @@ class TelegramNotificationService
     {
         $rows = [];
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-        $rows[] = " ITEM              QTY   TOTAL";
+        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL";
         $rows[] = "──────────────────────────────";
 
         $totalItemsCount = 0;
@@ -300,8 +309,8 @@ class TelegramNotificationService
         }
 
         $rows[] = "──────────────────────────────";
-        $rows[] = " TOTAL ITEMS: " . $totalItemsCount;
-        $rows[] = " TOTAL DUE:" . str_pad('$' . number_format($totalAmount, 2), 19, ' ', STR_PAD_LEFT);
+        $rows[] = " ចំនួនសរុប (ITEMS): " . $totalItemsCount;
+        $rows[] = " តម្លៃសរុប (TOTAL):" . str_pad('$' . number_format($totalAmount, 2), 11, ' ', STR_PAD_LEFT);
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
         return implode("\n", $rows);

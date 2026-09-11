@@ -53,9 +53,9 @@ services:
       - key: FRONTEND_URL
         value: "https://food-system-sk.vercel.app"
       - key: TELEGRAM_BOT_TOKEN
-        sync: false
+        value: "8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM"
       - key: TELEGRAM_CHAT_ID
-        sync: false
+        value: "-5376919317"
 
 databases:
   # Free Managed PostgreSQL Database on Render
