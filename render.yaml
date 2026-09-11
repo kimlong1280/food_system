@@ -6,7 +6,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
-    region: singapore
+    region: oregon
     envVars:
       - key: APP_NAME
         value: "SreyKeo Coffee & Soup"
@@ -37,7 +37,7 @@ services:
           name: food-system-db
           property: password
       - key: DB_SSLMODE
-        value: require
+        value: prefer
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
@@ -61,5 +61,5 @@ databases:
   # Free Managed PostgreSQL Database on Render
   - name: food-system-db
     plan: free
-    region: singapore
+    region: oregon
     databaseName: food_system

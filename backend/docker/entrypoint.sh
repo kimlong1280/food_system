@@ -55,7 +55,14 @@ if [ -n "$DB_HOST" ]; then
                         new PDO($dsn, $user, $pass, [PDO::ATTR_TIMEOUT => 2]);
                         echo $base;
                         exit(0);
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+                        try {
+                            $dsn = "pgsql:host={$base};port={$port};dbname={$db};sslmode=disable";
+                            new PDO($dsn, $user, $pass, [PDO::ATTR_TIMEOUT => 2]);
+                            echo $base;
+                            exit(0);
+                        } catch (\Throwable $e2) {}
+                    }
                 }
 
                 foreach (["oregon", "singapore", "frankfurt", "ohio"] as $r) {
@@ -72,8 +79,11 @@ if [ -n "$DB_HOST" ]; then
             ')
             if [ -n "$RESOLVED_HOST" ]; then
                 export DB_HOST="$RESOLVED_HOST"
-                export DB_SSLMODE="require"
-                echo "Resolved DB_HOST to: $DB_HOST (sslmode=require)"
+                case "$RESOLVED_HOST" in
+                    *.render.com) export DB_SSLMODE="require" ;;
+                    *)            export DB_SSLMODE="prefer" ;;
+                esac
+                echo "Resolved DB_HOST to: $DB_HOST (sslmode=$DB_SSLMODE)"
             fi
             ;;
     esac
