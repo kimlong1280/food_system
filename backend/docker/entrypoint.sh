@@ -36,13 +36,18 @@ fi
 # Link storage
 php artisan storage:link --force || true
 
+# Cache configuration and routes for production performance
+echo "Caching configuration..."
+php artisan config:cache || echo "Warning: config cache failed, continuing..."
+php artisan route:cache || echo "Warning: route cache failed, continuing..."
+
 # Run database migrations and seeding
 if [ -n "$DB_HOST" ] || [ -n "$DATABASE_URL" ]; then
     echo "Database configured, running migrations..."
     for i in 1 2 3 4 5 6 7 8 9 10; do
-        if php artisan migrate --force; then
+        if php artisan migrate --force 2>&1; then
             echo "Database migrations completed successfully!"
-            php artisan db:seed --force || echo "Seeding completed or already seeded."
+            php artisan db:seed --force 2>&1 || echo "Seeding completed or already seeded."
             break
         fi
         echo "Database not ready yet, retrying in 3 seconds ($i/10)..."
