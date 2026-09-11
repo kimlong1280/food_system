@@ -8,7 +8,6 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiX,
-  FiCoffee,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   FiSearch,
-  FiFilter,
   FiEye,
   FiRefreshCw,
   FiMapPin,
@@ -14,7 +13,6 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiAlertCircle,
-  FiRadio,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
@@ -195,7 +193,11 @@ const Orders = () => {
             title="Toggle live 10s auto-refresh"
           >
             <span className={`w-2 h-2 rounded-full ${autoSync ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
-            <span>{autoSync ? 'Live Sync (10s)' : 'Sync Paused'}</span>
+            <span>
+              {autoSync
+                ? `Live Sync (${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
+                : 'Sync Paused'}
+            </span>
           </button>
 
           {/* Manual Refresh Button */}

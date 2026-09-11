@@ -33,16 +33,16 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-8 sm:py-12 px-3 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Decorative Gradients */}
       <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-orange-600/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-amber-600/15 blur-3xl pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 px-4">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 px-2 sm:px-4">
         <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-orange-500 to-amber-400 mx-auto flex items-center justify-center text-white text-2xl shadow-xl shadow-orange-500/25 mb-4">
           <i className="fi fi-sr-coffee" />
         </div>
-        <h2 className="text-2xl font-black text-white tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
           Restaurant Admin Portal
         </h2>
         <p className="mt-1 text-xs text-slate-400">
@@ -50,8 +50,8 @@ const Login = () => {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10 px-4">
-        <div className="bg-slate-800/80 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-3xl border border-slate-700/80 sm:px-10">
+      <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10 w-full">
+        <div className="bg-slate-800/80 backdrop-blur-xl p-5 sm:p-8 md:p-10 shadow-2xl rounded-3xl border border-slate-700/80">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
@@ -67,7 +67,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
               </div>
             </div>
@@ -86,7 +86,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
               </div>
             </div>
@@ -116,7 +116,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold text-sm shadow-lg shadow-orange-500/25 active:scale-98 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 sm:py-3.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold text-sm shadow-lg shadow-orange-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -132,6 +132,15 @@ const Login = () => {
               </button>
             </div>
           </form>
+
+          <div className="mt-5 pt-4 border-t border-slate-700/60 text-center">
+            <a
+              href="/menu"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-orange-400 transition-colors"
+            >
+              <span>← Go to Customer Menu</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
