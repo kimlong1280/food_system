@@ -92,6 +92,7 @@ const Checkout = () => {
       // Save order number to localStorage for persistent live tracking across refreshes
       if (createdOrder?.order_number) {
         localStorage.setItem('restaurant_latest_order', createdOrder.order_number)
+        sessionStorage.setItem(`order_status_${createdOrder.order_number}`, 'pending')
       }
 
       toast.success(t('orderPlacedSuccess'), {

@@ -50,7 +50,23 @@ class TelegramNotificationService
 
             $message = $this->formatOrderReceiptMessage($order);
 
-            return $this->sendMessageToChats($botToken, $chatIds, $message, "order #{$order->order_number}");
+            // Two inline reply buttons below order ticket: Accept and Reject
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '✅ ទទួលការកុម្ម៉ង់',
+                            'callback_data' => "order_accept_{$order->id}",
+                        ],
+                        [
+                            'text' => '❌ បដិសេធ',
+                            'callback_data' => "order_reject_{$order->id}",
+                        ],
+                    ],
+                ],
+            ];
+
+            return $this->sendMessageToChats($botToken, $chatIds, $message, "order #{$order->order_number}", $replyMarkup);
         } catch (\Throwable $e) {
             // Never break order creation if Telegram fails
             Log::error("Telegram notification exception for order #{$order->order_number}: " . $e->getMessage());
@@ -82,26 +98,33 @@ class TelegramNotificationService
     }
 
     /**
-     * Send HTML message to one or multiple chat IDs (groups or personal chats).
+     * Send HTML message to one or multiple chat IDs (groups or personal chats) with optional inline keyboard.
      *
      * @param string $botToken
      * @param array<string> $chatIds
      * @param string $message
      * @param string $context
+     * @param array|null $replyMarkup
      * @return bool True if at least one message was sent successfully
      */
-    protected function sendMessageToChats(string $botToken, array $chatIds, string $message, string $context = ''): bool
+    protected function sendMessageToChats(string $botToken, array $chatIds, string $message, string $context = '', ?array $replyMarkup = null): bool
     {
         $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
         $successCount = 0;
 
         foreach ($chatIds as $chatId) {
             try {
-                $response = Http::timeout(10)->post($url, [
+                $payload = [
                     'chat_id' => $chatId,
                     'text' => $message,
                     'parse_mode' => 'HTML',
-                ]);
+                ];
+
+                if (!empty($replyMarkup)) {
+                    $payload['reply_markup'] = $replyMarkup;
+                }
+
+                $response = Http::timeout(10)->post($url, $payload);
 
                 if ($response->successful()) {
                     Log::info("Telegram notification ({$context}) sent successfully to [{$chatId}]");
@@ -118,9 +141,65 @@ class TelegramNotificationService
     }
 
     /**
+     * Answer callback query when user clicks an inline reply button in Telegram.
+     */
+    public function answerCallbackQuery(string $callbackQueryId, string $text, bool $showAlert = false): bool
+    {
+        $botToken = config('telegram.bot_token') ?: env('TELEGRAM_BOT_TOKEN', '8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM');
+        if (empty($botToken)) {
+            return false;
+        }
+
+        try {
+            $url = "https://api.telegram.org/bot{$botToken}/answerCallbackQuery";
+            $response = Http::timeout(5)->post($url, [
+                'callback_query_id' => $callbackQueryId,
+                'text' => $text,
+                'show_alert' => $showAlert,
+            ]);
+
+            return $response->successful();
+        } catch (\Throwable $e) {
+            Log::error("Telegram answerCallbackQuery exception: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Edit message text and reply markup in Telegram in-place.
+     */
+    public function editMessageText(string|int $chatId, int $messageId, string $newText, ?array $replyMarkup = null): bool
+    {
+        $botToken = config('telegram.bot_token') ?: env('TELEGRAM_BOT_TOKEN', '8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM');
+        if (empty($botToken)) {
+            return false;
+        }
+
+        try {
+            $url = "https://api.telegram.org/bot{$botToken}/editMessageText";
+            $payload = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $newText,
+                'parse_mode' => 'HTML',
+            ];
+
+            if ($replyMarkup !== null) {
+                $payload['reply_markup'] = $replyMarkup;
+            }
+
+            $response = Http::timeout(8)->post($url, $payload);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            Log::error("Telegram editMessageText exception: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Format a clean, beautiful table receipt message for Telegram in HTML format with Khmer language.
      */
-    public function formatOrderReceiptMessage(Order $order): string
+    public function formatOrderReceiptMessage(Order $order, ?string $handledByInfo = null): string
     {
         $appName = config('app.name', 'SreyKeo Coffee & Soup');
         $escapedAppName = htmlspecialchars($appName, ENT_QUOTES, 'UTF-8');
@@ -153,7 +232,7 @@ class TelegramNotificationService
         $lines[] = "<b>◆ ពេលវេលា    :</b> {$formattedDate}, {$formattedTime} (ម៉ោងកម្ពុជា)";
         $lines[] = "";
 
-        // Build Clean Fixed-Width Monospace Table
+        // Build Clean Fixed-Width Monospace Table in KHR
         $tableOutput = $this->buildReceiptTable($order);
         $lines[] = "<pre>";
         $lines[] = $tableOutput;
@@ -176,6 +255,11 @@ class TelegramNotificationService
 
         $lines[] = "<b>◆ ស្ថានភាព    :</b> [ {$statusKhmer} ]";
         $lines[] = "<b>◆ ការទូទាត់    :</b> [ គិតលុយពេលភ្ញៀវហៅ ]";
+
+        if (!empty($handledByInfo)) {
+            $lines[] = "<b>◆ ដំណើរការដោយ  :</b> {$handledByInfo}";
+        }
+
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
 
         return implode("\n", $lines);
@@ -198,6 +282,9 @@ class TelegramNotificationService
 
         $orderNumbers = collect($orders)->pluck('order_number')->filter()->implode(', ');
 
+        $totalKhr = number_format(round($totalAmount * 4000)) . ' ៛';
+        $totalUsd = '$' . number_format($totalAmount, 2);
+
         $lines = [];
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
         $lines[] = "<b>   " . strtoupper($escapedAppName) . "</b>";
@@ -205,7 +292,7 @@ class TelegramNotificationService
         $lines[] = "<b>      ( BILL PAYMENT REQUEST )</b>";
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
         $lines[] = "<b>◆ តុ          :</b> <b>តុ {$tableNumber}{$tableName}</b>";
-        $lines[] = "<b>◆ ទឹកប្រាក់សរុប :</b> <b>$" . number_format($totalAmount, 2) . "</b>";
+        $lines[] = "<b>◆ ទឹកប្រាក់សរុប :</b> <b>{$totalKhr}</b> ({$totalUsd})";
 
         if (!empty($customerName)) {
             $lines[] = "<b>◆ អតិថិជន     :</b> " . htmlspecialchars($customerName, ENT_QUOTES, 'UTF-8');
@@ -218,7 +305,7 @@ class TelegramNotificationService
         $lines[] = "<b>◆ ពេលវេលា    :</b> {$formattedDate}, {$formattedTime} (ម៉ោងកម្ពុជា)";
         $lines[] = "";
 
-        // Build item summary table across orders
+        // Build item summary table across orders in KHR
         $lines[] = "<pre>";
         $lines[] = $this->buildMultiOrderReceiptTable($orders, $totalAmount);
         $lines[] = "</pre>";
@@ -231,14 +318,14 @@ class TelegramNotificationService
     }
 
     /**
-     * Build monospace item table resembling a clean POS receipt.
+     * Build monospace item table resembling a clean POS receipt with KHR Riel prices.
      * Width = 30 characters (perfect fit for Telegram mobile and desktop).
      */
     protected function buildReceiptTable(Order $order): string
     {
         $rows = [];
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL";
+        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)";
         $rows[] = "──────────────────────────────";
 
         $totalItemsCount = 0;
@@ -246,19 +333,19 @@ class TelegramNotificationService
         foreach ($order->orderItems as $item) {
             $name = trim($item->item_name);
             $qty = (int) $item->quantity;
-            $subtotal = number_format((float) $item->subtotal, 2);
+            $subtotalKhr = number_format(round((float) $item->subtotal * 4000)) . ' ៛';
             $totalItemsCount += $qty;
 
-            // If item name fits within 15 chars, print on single line
-            if (mb_strlen($name, 'UTF-8') <= 15) {
-                $nameCol = ' ' . str_pad($name, 15, ' ');
-                $qtyCol = str_pad((string) $qty, 4, ' ', STR_PAD_LEFT);
-                $totalCol = str_pad('$' . $subtotal, 10, ' ', STR_PAD_LEFT);
+            // If item name fits within 14 chars, print on single line
+            if (mb_strlen($name, 'UTF-8') <= 14) {
+                $nameCol = ' ' . str_pad($name, 14, ' ');
+                $qtyCol = str_pad((string) $qty, 3, ' ', STR_PAD_LEFT);
+                $totalCol = str_pad($subtotalKhr, 12, ' ', STR_PAD_LEFT);
                 $rows[] = $nameCol . $qtyCol . $totalCol;
             } else {
                 // For longer names, print name on line 1, qty & total on line 2
                 $rows[] = ' ' . $name;
-                $rows[] = str_repeat(' ', 16) . str_pad((string) $qty, 4, ' ', STR_PAD_LEFT) . str_pad('$' . $subtotal, 10, ' ', STR_PAD_LEFT);
+                $rows[] = str_repeat(' ', 14) . str_pad((string) $qty, 3, ' ', STR_PAD_LEFT) . str_pad($subtotalKhr, 13, ' ', STR_PAD_LEFT);
             }
 
             // Print item note if present
@@ -267,24 +354,26 @@ class TelegramNotificationService
             }
         }
 
-        $formattedOrderTotal = number_format((float) $order->total, 2);
+        $formattedOrderTotalKhr = number_format(round((float) $order->total * 4000)) . ' ៛';
+        $formattedOrderTotalUsd = '$' . number_format((float) $order->total, 2);
 
         $rows[] = "──────────────────────────────";
         $rows[] = " ចំនួនសរុប (ITEMS): " . $totalItemsCount;
-        $rows[] = " តម្លៃសរុប (TOTAL):" . str_pad('$' . $formattedOrderTotal, 11, ' ', STR_PAD_LEFT);
+        $rows[] = " តម្លៃសរុប (KHR)  : " . $formattedOrderTotalKhr;
+        $rows[] = " សមមូល (USD)     : " . $formattedOrderTotalUsd;
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
         return implode("\n", $rows);
     }
 
     /**
-     * Build monospace item table for multiple orders belonging to a table bill.
+     * Build monospace item table for multiple orders belonging to a table bill in KHR.
      */
     protected function buildMultiOrderReceiptTable($orders, float $totalAmount): string
     {
         $rows = [];
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL";
+        $rows[] = " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)";
         $rows[] = "──────────────────────────────";
 
         $totalItemsCount = 0;
@@ -293,24 +382,28 @@ class TelegramNotificationService
             foreach ($order->orderItems as $item) {
                 $name = trim($item->item_name);
                 $qty = (int) $item->quantity;
-                $subtotal = number_format((float) $item->subtotal, 2);
+                $subtotalKhr = number_format(round((float) $item->subtotal * 4000)) . ' ៛';
                 $totalItemsCount += $qty;
 
-                if (mb_strlen($name, 'UTF-8') <= 15) {
-                    $nameCol = ' ' . str_pad($name, 15, ' ');
-                    $qtyCol = str_pad((string) $qty, 4, ' ', STR_PAD_LEFT);
-                    $totalCol = str_pad('$' . $subtotal, 10, ' ', STR_PAD_LEFT);
+                if (mb_strlen($name, 'UTF-8') <= 14) {
+                    $nameCol = ' ' . str_pad($name, 14, ' ');
+                    $qtyCol = str_pad((string) $qty, 3, ' ', STR_PAD_LEFT);
+                    $totalCol = str_pad($subtotalKhr, 12, ' ', STR_PAD_LEFT);
                     $rows[] = $nameCol . $qtyCol . $totalCol;
                 } else {
                     $rows[] = ' ' . $name;
-                    $rows[] = str_repeat(' ', 16) . str_pad((string) $qty, 4, ' ', STR_PAD_LEFT) . str_pad('$' . $subtotal, 10, ' ', STR_PAD_LEFT);
+                    $rows[] = str_repeat(' ', 14) . str_pad((string) $qty, 3, ' ', STR_PAD_LEFT) . str_pad($subtotalKhr, 13, ' ', STR_PAD_LEFT);
                 }
             }
         }
 
+        $formattedTotalKhr = number_format(round($totalAmount * 4000)) . ' ៛';
+        $formattedTotalUsd = '$' . number_format($totalAmount, 2);
+
         $rows[] = "──────────────────────────────";
         $rows[] = " ចំនួនសរុប (ITEMS): " . $totalItemsCount;
-        $rows[] = " តម្លៃសរុប (TOTAL):" . str_pad('$' . number_format($totalAmount, 2), 11, ' ', STR_PAD_LEFT);
+        $rows[] = " តម្លៃសរុប (KHR)  : " . $formattedTotalKhr;
+        $rows[] = " សមមូល (USD)     : " . $formattedTotalUsd;
         $rows[] = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
         return implode("\n", $rows);

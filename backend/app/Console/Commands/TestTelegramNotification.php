@@ -67,14 +67,15 @@ class TestTelegramNotification extends Command
         $sampleText .= "<b>◆ ពេលវេលា    :</b> {$dateKh}, {$timeKh} (ម៉ោងកម្ពុជា)\n\n";
         $sampleText .= "<pre>\n";
         $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $sampleText .= " ITEM (មុខទំនិញ)     QTY   TOTAL\n";
+        $sampleText .= " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)\n";
         $sampleText .= "──────────────────────────────\n";
-        $sampleText .= " Iced Latte          2   $5.00\n";
-        $sampleText .= " Khmer Beef Soup     1   $4.50\n";
+        $sampleText .= " Iced Latte          2   20,000 ៛\n";
+        $sampleText .= " Khmer Beef Soup     1   18,000 ៛\n";
         $sampleText .= "   - ចំណាំ: ផ្អែមតិច\n";
         $sampleText .= "──────────────────────────────\n";
         $sampleText .= " ចំនួនសរុប (ITEMS): 3\n";
-        $sampleText .= " តម្លៃសរុប (TOTAL):      $9.50\n";
+        $sampleText .= " តម្លៃសរុប (KHR)  : 38,000 ៛\n";
+        $sampleText .= " សមមូល (USD)     : $9.50\n";
         $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
         $sampleText .= "</pre>\n";
         $sampleText .= "<b>◆ ចំណាំ        :</b> <i>បន្ថែមក្រូចឆ្មារ</i>\n";
@@ -84,6 +85,21 @@ class TestTelegramNotification extends Command
 
         $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
         $allSuccess = true;
+
+        $replyMarkup = [
+            'inline_keyboard' => [
+                [
+                    [
+                        'text' => '✅ ទទួលការកុម្ម៉ង់',
+                        'callback_data' => 'order_accept_1',
+                    ],
+                    [
+                        'text' => '❌ បដិសេធ',
+                        'callback_data' => 'order_reject_1',
+                    ],
+                ],
+            ],
+        ];
 
         foreach ($chatIds as $chatId) {
             $isGroup = str_starts_with($chatId, '-');
@@ -97,6 +113,7 @@ class TestTelegramNotification extends Command
                     'chat_id' => $chatId,
                     'text' => $sampleText,
                     'parse_mode' => 'HTML',
+                    'reply_markup' => $replyMarkup,
                 ]);
 
                 if ($response->successful()) {

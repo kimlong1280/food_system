@@ -1,9 +1,12 @@
+import { useEffect } from 'react'
 import { Outlet, useLocation, Link } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
+import toast, { Toaster } from 'react-hot-toast'
 import { FiShoppingBag, FiArrowRight } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 import { useCart } from '../context/CartContext'
 import { useLanguage } from '../context/LanguageContext'
+import api from '../services/api'
+import { playOrderNotificationSound } from '../utils/audio'
 
 const CustomerLayout = () => {
   const location = useLocation()
@@ -14,6 +17,97 @@ const CustomerLayout = () => {
   const hideFloatingCart = ['/cart', '/checkout', '/order-success', '/table-error'].some((path) =>
     location.pathname.startsWith(path)
   )
+
+  // Background check for latest order status change while customer is browsing other pages
+  const isOnOrderSuccessPage = ['/order-success', '/orders/', '/order-status/'].some((path) =>
+    location.pathname.startsWith(path)
+  )
+
+  useEffect(() => {
+    if (isOnOrderSuccessPage) return
+
+    const latestOrderNumber = localStorage.getItem('restaurant_latest_order')
+    if (!latestOrderNumber) return
+
+    let isSubscribed = true
+
+    const checkOrderStatus = async () => {
+      try {
+        const res = await api.get(`/orders/${latestOrderNumber}`)
+        const data = res.data?.data || res.data?.order || res.data
+        if (!isSubscribed || !data) return
+
+        const prevStatusKey = `order_status_${latestOrderNumber}`
+        const prevStatus = sessionStorage.getItem(prevStatusKey)
+
+        // Store status for comparison
+        if (!prevStatus) {
+          sessionStorage.setItem(prevStatusKey, data.status)
+          return
+        }
+
+        if (prevStatus !== data.status) {
+          sessionStorage.setItem(prevStatusKey, data.status)
+
+          // If kitchen accepted (pending -> preparing or confirmed)
+          if (
+            prevStatus === 'pending' &&
+            (data.status === 'preparing' || data.status === 'confirmed')
+          ) {
+            playOrderNotificationSound()
+            toast.custom(
+              (tItem) => (
+                <div
+                  className={`${
+                    tItem.visible ? 'animate-enter' : 'animate-leave'
+                  } max-w-md w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white shadow-2xl rounded-3xl pointer-events-auto flex p-4 border border-emerald-300/40 animate-pulse-glow`}
+                >
+                  <div className="flex-1 flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0 shadow-xs animate-pop">
+                      👨‍🍳
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-black tracking-tight">
+                        {t('orderAcceptedToastTitle')}
+                      </p>
+                      <p className="text-xs text-emerald-50 mt-0.5 leading-snug">
+                        {t('orderAcceptedToastDesc', { number: data.order_number })}
+                      </p>
+                      <Link
+                        to={`/order-status/${data.order_number}`}
+                        onClick={() => toast.dismiss(tItem.id)}
+                        className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 bg-white text-emerald-800 rounded-xl font-extrabold text-xs hover:bg-emerald-50 transition-colors shadow-xs"
+                      >
+                        <span>{t('viewOrderStatus')}</span>
+                        <span>&rarr;</span>
+                      </Link>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toast.dismiss(tItem.id)}
+                    className="ml-2 text-white/70 hover:text-white text-sm font-bold self-start p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ),
+              { duration: 8000 }
+            )
+          }
+        }
+      } catch (err) {
+        // Silently catch background network glitches
+      }
+    }
+
+    const intervalId = setInterval(checkOrderStatus, 4000)
+    checkOrderStatus()
+
+    return () => {
+      isSubscribed = false
+      clearInterval(intervalId)
+    }
+  }, [isOnOrderSuccessPage, t])
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col antialiased selection:bg-orange-500 selection:text-white">

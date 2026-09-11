@@ -15,6 +15,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { Spinner } from '../../components/Loading'
 import TableBillModal from '../../components/TableBillModal'
 import OrderStatusTracker from '../../components/OrderStatusTracker'
+import { playOrderNotificationSound } from '../../utils/audio'
 
 const OrderSuccess = () => {
   const location = useLocation()
@@ -59,16 +60,61 @@ const OrderSuccess = () => {
         if (data) {
           // Check if status changed
           if (previousStatusRef.current && previousStatusRef.current !== data.status) {
-            toast.success(
-              t('statusUpdatedToast', {
-                number: data.order_number,
-                status: data.status.toUpperCase(),
-              }),
-              {
-                duration: 5000,
-                icon: '🔔',
-              }
-            )
+            // Play restaurant notification chime
+            playOrderNotificationSound()
+
+            // If kitchen accepted the order (pending -> preparing or confirmed)
+            if (
+              previousStatusRef.current === 'pending' &&
+              (data.status === 'preparing' || data.status === 'confirmed')
+            ) {
+              toast.custom(
+                (tItem) => (
+                  <div
+                    className={`${
+                      tItem.visible ? 'animate-enter' : 'animate-leave'
+                    } max-w-md w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white shadow-2xl rounded-3xl pointer-events-auto flex p-4 border border-emerald-300/40 animate-pulse-glow`}
+                  >
+                    <div className="flex-1 flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-2xl shrink-0 shadow-xs animate-pop">
+                        👨‍🍳
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black tracking-tight flex items-center gap-1.5">
+                          <span>{t('orderAcceptedToastTitle')}</span>
+                        </p>
+                        <p className="text-xs text-emerald-50 mt-0.5 leading-snug">
+                          {t('orderAcceptedToastDesc', { number: data.order_number })}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toast.dismiss(tItem.id)}
+                      className="ml-2 text-white/70 hover:text-white text-sm font-bold self-start p-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ),
+                { duration: 7000 }
+              )
+            } else if (data.status === 'cancelled') {
+              toast.error(
+                `${t('orderRejectedToastTitle', { number: data.order_number })} - ${t('orderRejectedToastDesc')}`,
+                { duration: 7000 }
+              )
+            } else {
+              toast.success(
+                t('statusUpdatedToast', {
+                  number: data.order_number,
+                  status: data.status.toUpperCase(),
+                }),
+                {
+                  duration: 5000,
+                  icon: '🔔',
+                }
+              )
+            }
           }
 
           previousStatusRef.current = data.status
@@ -99,7 +145,7 @@ const OrderSuccess = () => {
     }
   }, [initialOrder, orderNumber, fetchOrder])
 
-  // Real-time polling: poll every 4.5 seconds while order is actively in progress
+  // Real-time polling: poll every 3 seconds while order is actively in progress
   useEffect(() => {
     if (!orderNumber) return
 
@@ -110,7 +156,7 @@ const OrderSuccess = () => {
 
     const intervalId = setInterval(() => {
       fetchOrder(false)
-    }, 4500)
+    }, 3000)
 
     return () => clearInterval(intervalId)
   }, [orderNumber, order?.status, fetchOrder])

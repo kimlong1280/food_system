@@ -12,6 +12,7 @@ use App\Http\Controllers\Public\MenuController;
 use App\Http\Controllers\Public\OrderController;
 use App\Http\Controllers\Public\PosterController;
 use App\Http\Controllers\Public\TableController;
+use App\Http\Controllers\Public\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -148,6 +149,9 @@ Route::prefix('')->group(function () {
 
     // Promotional Posters / Banners
     Route::get('/posters', [PosterController::class, 'index']);
+
+    // Telegram Bot Webhook (Inline Button Callbacks)
+    Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handleWebhook']);
 
     // Admin Auth
     Route::post('/login', [AuthController::class, 'login']);

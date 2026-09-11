@@ -177,6 +177,11 @@ export const translations = {
     statusCancelledTitle: 'Order Cancelled',
     statusCancelledDesc: 'This order was cancelled. Please speak with a staff member.',
     statusUpdatedToast: 'Order #{number} status updated to: {status}',
+    orderAcceptedToastTitle: '🎉 Kitchen Accepted Your Order!',
+    orderAcceptedToastDesc: 'Our chefs just accepted order #{number} and started cooking your food fresh and hot!',
+    orderRejectedToastTitle: '❌ Order #{number} was Cancelled',
+    orderRejectedToastDesc: 'This order was cancelled by staff. Please check with your waiter.',
+    viewOrderStatus: 'View Status',
     currentStatus: 'Current Status',
 
     // Table Error Page
@@ -372,6 +377,11 @@ export const translations = {
     statusCancelledTitle: 'បានបោះបង់ការកុម្ម៉ង់',
     statusCancelledDesc: 'ការកុម្ម៉ង់នេះត្រូវបានបោះបង់។ សូមទាក់ទងបុគ្គលិកប្រសិនបើត្រូវការជំនួយ។',
     statusUpdatedToast: 'ការកុម្ម៉ង់លេខ #{number} បានប្តូរទៅជា «{status}»!',
+    orderAcceptedToastTitle: '🎉 ចុងភៅបានទទួលការកុម្ម៉ង់របស់អ្នកហើយ!',
+    orderAcceptedToastDesc: 'ចុងភៅបានទទួលការកុម្ម៉ង់ #{number} រួចរាល់ ហើយកំពុងចាប់ផ្តើមចម្អិនម្ហូបជូនអ្នក!',
+    orderRejectedToastTitle: '❌ ការកុម្ម៉ង់ #{number} ត្រូវបានបដិសេធ',
+    orderRejectedToastDesc: 'ការកុម្ម៉ង់នេះត្រូវបានបដិសេធដោយបុគ្គលិក។ សូមទាក់ទងបុគ្គលិកបម្រើការ!',
+    viewOrderStatus: 'មើលស្ថានភាព',
     currentStatus: 'ស្ថានភាពបច្ចុប្បន្ន',
 
     // Table Error Page
