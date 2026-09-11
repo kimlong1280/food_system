@@ -119,4 +119,54 @@ class TelegramWebhookTest extends TestCase
         $order->refresh();
         $this->assertEquals('cancelled', $order->status);
     }
+
+    public function test_telegram_webhook_handles_confirm_payment_callback(): void
+    {
+        Http::fake([
+            'https://api.telegram.org/bot*' => Http::response(['ok' => true], 200),
+        ]);
+
+        $table = Table::first();
+        $order = Order::create([
+            'order_number' => 'ORD-TEST-003',
+            'table_id' => $table->id,
+            'customer_name' => 'Bill Payer',
+            'status' => 'served',
+            'subtotal' => 20.00,
+            'total' => 20.00,
+        ]);
+
+        $payload = [
+            'update_id' => 99997,
+            'callback_query' => [
+                'id' => 'cb_query_789',
+                'from' => [
+                    'id' => 12345,
+                    'first_name' => 'Hong',
+                    'username' => 'HongKimLong1',
+                ],
+                'message' => [
+                    'message_id' => 779,
+                    'chat' => [
+                        'id' => -5376919317,
+                        'title' => 'Hong and NUN',
+                        'type' => 'group',
+                    ],
+                ],
+                'data' => "payment_confirm_{$table->id}",
+            ],
+        ];
+
+        $response = $this->postJson('/api/telegram/webhook', $payload);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'ok' => true,
+                'action' => 'payment_confirmed',
+                'table_id' => $table->id,
+            ]);
+
+        $order->refresh();
+        $this->assertEquals('completed', $order->status);
+    }
 }

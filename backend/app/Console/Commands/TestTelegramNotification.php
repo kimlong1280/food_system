@@ -13,7 +13,7 @@ class TestTelegramNotification extends Command
      *
      * @var string
      */
-    protected $signature = 'telegram:test {--chat_id= : Override chat ID}';
+    protected $signature = 'telegram:test {--chat_id= : Override chat ID} {--bill : Send Bill Payment alert test}';
 
     /**
      * The console command description.
@@ -57,49 +57,88 @@ class TestTelegramNotification extends Command
 
         $appName = strtoupper(htmlspecialchars(config('app.name', 'SreyKeo Coffee & Soup'), ENT_QUOTES, 'UTF-8'));
 
-        $sampleText = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
-        $sampleText .= "<b>   {$appName}</b>\n";
-        $sampleText .= "<b>      [ 📋 ប័ណ្ណកុម្ម៉ង់ម្ហូបថ្មី ]</b>\n";
-        $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
-        $sampleText .= "<b>◆ លេខកុម្ម៉ង់ :</b> <code>#TEST-0001</code>\n";
-        $sampleText .= "<b>◆ តុ          :</b> តុ 01 (ខាងក្នុង)\n";
-        $sampleText .= "<b>◆ អតិថិជន     :</b> ភ្ញៀវសាកល្បង\n";
-        $sampleText .= "<b>◆ ពេលវេលា    :</b> {$dateKh}, {$timeKh} (ម៉ោងកម្ពុជា)\n\n";
-        $sampleText .= "<pre>\n";
-        $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $sampleText .= " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)\n";
-        $sampleText .= "──────────────────────────────\n";
-        $sampleText .= " Iced Latte          2   20,000 ៛\n";
-        $sampleText .= " Khmer Beef Soup     1   18,000 ៛\n";
-        $sampleText .= "   - ចំណាំ: ផ្អែមតិច\n";
-        $sampleText .= "──────────────────────────────\n";
-        $sampleText .= " ចំនួនសរុប (ITEMS): 3\n";
-        $sampleText .= " តម្លៃសរុប (KHR)  : 38,000 ៛\n";
-        $sampleText .= " សមមូល (USD)     : $9.50\n";
-        $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-        $sampleText .= "</pre>\n";
-        $sampleText .= "<b>◆ ចំណាំ        :</b> <i>បន្ថែមក្រូចឆ្មារ</i>\n";
-        $sampleText .= "<b>◆ ស្ថានភាព    :</b> [ រង់ចាំចម្អិន (PENDING) ]\n";
-        $sampleText .= "<b>◆ ការទូទាត់    :</b> [ គិតលុយនៅកន្លែងគិតប្រាក់ ]\n";
-        $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
+        if ($this->option('bill')) {
+            $sampleText = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
+            $sampleText .= "<b>   {$appName}</b>\n";
+            $sampleText .= "<b>    [ 🔔 ស្នើសុំទូទាត់គិតលុយ ]</b>\n";
+            $sampleText .= "<b>      ( BILL PAYMENT REQUEST )</b>\n";
+            $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
+            $sampleText .= "<b>◆ តុ          :</b> <b>តុ 01 (ខាងក្នុង)</b>\n";
+            $sampleText .= "<b>◆ ទឹកប្រាក់សរុប :</b> <b>38,000 ៛</b> ($9.50)\n";
+            $sampleText .= "<b>◆ អតិថិជន     :</b> ភ្ញៀវសាកល្បង\n";
+            $sampleText .= "<b>◆ លេខកុម្ម៉ង់  :</b> <code>#TEST-0001</code>\n";
+            $sampleText .= "<b>◆ ពេលវេលា    :</b> {$dateKh}, {$timeKh} (ម៉ោងកម្ពុជា)\n\n";
+            $sampleText .= "<pre>\n";
+            $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $sampleText .= " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)\n";
+            $sampleText .= "──────────────────────────────\n";
+            $sampleText .= " Iced Latte          2   20,000 ៛\n";
+            $sampleText .= " Khmer Beef Soup     1   18,000 ៛\n";
+            $sampleText .= "──────────────────────────────\n";
+            $sampleText .= " ចំនួនសរុប (ITEMS): 3\n";
+            $sampleText .= " តម្លៃសរុប (KHR)  : 38,000 ៛\n";
+            $sampleText .= " សមមូល (USD)     : $9.50\n";
+            $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $sampleText .= "</pre>\n";
+            $sampleText .= "<b>👉 ការងារត្រូវធ្វើ (ACTION REQUIRED):</b>\n";
+            $sampleText .= "<i>តុលេខ 01 បានស្នើសុំទូទាត់គិតលុយ! សូមយកវិក្កយបត្រទៅកាន់តុលេខ 01 ដើម្បីប្រមូលប្រាក់។</i>\n";
+            $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
+
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '✅ បញ្ជាក់ការទូទាត់ប្រាក់ (Confirm Payment)',
+                            'callback_data' => 'payment_confirm_1',
+                        ],
+                    ],
+                ],
+            ];
+        } else {
+            $sampleText = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
+            $sampleText .= "<b>   {$appName}</b>\n";
+            $sampleText .= "<b>      [ 📋 ប័ណ្ណកុម្ម៉ង់ម្ហូបថ្មី ]</b>\n";
+            $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
+            $sampleText .= "<b>◆ លេខកុម្ម៉ង់ :</b> <code>#TEST-0001</code>\n";
+            $sampleText .= "<b>◆ តុ          :</b> តុ 01 (ខាងក្នុង)\n";
+            $sampleText .= "<b>◆ អតិថិជន     :</b> ភ្ញៀវសាកល្បង\n";
+            $sampleText .= "<b>◆ ពេលវេលា    :</b> {$dateKh}, {$timeKh} (ម៉ោងកម្ពុជា)\n\n";
+            $sampleText .= "<pre>\n";
+            $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $sampleText .= " ITEM (មុខទំនិញ)     QTY   TOTAL(៛)\n";
+            $sampleText .= "──────────────────────────────\n";
+            $sampleText .= " Iced Latte          2   20,000 ៛\n";
+            $sampleText .= " Khmer Beef Soup     1   18,000 ៛\n";
+            $sampleText .= "   - ចំណាំ: ផ្អែមតិច\n";
+            $sampleText .= "──────────────────────────────\n";
+            $sampleText .= " ចំនួនសរុប (ITEMS): 3\n";
+            $sampleText .= " តម្លៃសរុប (KHR)  : 38,000 ៛\n";
+            $sampleText .= " សមមូល (USD)     : $9.50\n";
+            $sampleText .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $sampleText .= "</pre>\n";
+            $sampleText .= "<b>◆ ចំណាំ        :</b> <i>បន្ថែមក្រូចឆ្មារ</i>\n";
+            $sampleText .= "<b>◆ ស្ថានភាព    :</b> [ រង់ចាំចម្អិន (PENDING) ]\n";
+            $sampleText .= "<b>◆ ការទូទាត់    :</b> [ គិតលុយនៅកន្លែងគិតប្រាក់ ]\n";
+            $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
+
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '✅ ទទួលការកុម្ម៉ង់',
+                            'callback_data' => 'order_accept_1',
+                        ],
+                        [
+                            'text' => '❌ បដិសេធ',
+                            'callback_data' => 'order_reject_1',
+                        ],
+                    ],
+                ],
+            ];
+        }
 
         $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
         $allSuccess = true;
-
-        $replyMarkup = [
-            'inline_keyboard' => [
-                [
-                    [
-                        'text' => '✅ ទទួលការកុម្ម៉ង់',
-                        'callback_data' => 'order_accept_1',
-                    ],
-                    [
-                        'text' => '❌ បដិសេធ',
-                        'callback_data' => 'order_reject_1',
-                    ],
-                ],
-            ],
-        ];
 
         foreach ($chatIds as $chatId) {
             $isGroup = str_starts_with($chatId, '-');

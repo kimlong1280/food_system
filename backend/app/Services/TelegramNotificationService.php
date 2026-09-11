@@ -90,7 +90,19 @@ class TelegramNotificationService
         try {
             $message = $this->formatPaymentRequestMessage($table, $orders, $totalAmount, $customerName);
 
-            return $this->sendMessageToChats($botToken, $chatIds, $message, "Table {$table->table_number} bill payment");
+            // Inline button below BILL PAYMENT REQUEST to confirm payment
+            $replyMarkup = [
+                'inline_keyboard' => [
+                    [
+                        [
+                            'text' => '✅ បញ្ជាក់ការទូទាត់ប្រាក់ (Confirm Payment)',
+                            'callback_data' => "payment_confirm_{$table->id}",
+                        ],
+                    ],
+                ],
+            ];
+
+            return $this->sendMessageToChats($botToken, $chatIds, $message, "Table {$table->table_number} bill payment", $replyMarkup);
         } catch (\Throwable $e) {
             Log::error("Telegram bill payment alert exception for Table {$table->table_number}: " . $e->getMessage());
             return false;
@@ -197,6 +209,35 @@ class TelegramNotificationService
     }
 
     /**
+     * Edit message reply markup only in Telegram in-place.
+     */
+    public function editMessageReplyMarkup(string|int $chatId, int $messageId, ?array $replyMarkup = null): bool
+    {
+        $botToken = config('telegram.bot_token') ?: env('TELEGRAM_BOT_TOKEN', '8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM');
+        if (empty($botToken)) {
+            return false;
+        }
+
+        try {
+            $url = "https://api.telegram.org/bot{$botToken}/editMessageReplyMarkup";
+            $payload = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ];
+
+            if ($replyMarkup !== null) {
+                $payload['reply_markup'] = $replyMarkup;
+            }
+
+            $response = Http::timeout(8)->post($url, $payload);
+            return $response->successful();
+        } catch (\Throwable $e) {
+            Log::error("Telegram editMessageReplyMarkup exception: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Format a clean, beautiful table receipt message for Telegram in HTML format with Khmer language.
      */
     public function formatOrderReceiptMessage(Order $order, ?string $handledByInfo = null): string
@@ -268,7 +309,7 @@ class TelegramNotificationService
     /**
      * Format a clean, beautiful Bill Payment Request alert for Telegram in Khmer language.
      */
-    public function formatPaymentRequestMessage(Table $table, $orders, float $totalAmount, ?string $customerName = null): string
+    public function formatPaymentRequestMessage(Table $table, $orders, float $totalAmount, ?string $customerName = null, ?string $handledByInfo = null): string
     {
         $appName = config('app.name', 'SreyKeo Coffee & Soup');
         $escapedAppName = htmlspecialchars($appName, ENT_QUOTES, 'UTF-8');
@@ -310,8 +351,12 @@ class TelegramNotificationService
         $lines[] = $this->buildMultiOrderReceiptTable($orders, $totalAmount);
         $lines[] = "</pre>";
 
-        $lines[] = "<b>👉 ការងារត្រូវធ្វើ (ACTION REQUIRED):</b>";
-        $lines[] = "<i>តុលេខ {$tableNumber} បានស្នើសុំទូទាត់គិតលុយ! សូមយកវិក្កយបត្រទៅកាន់តុលេខ {$tableNumber} ដើម្បីប្រមូលប្រាក់។</i>";
+        if (!empty($handledByInfo)) {
+            $lines[] = "<b>◆ ស្ថានភាពទូទាត់ :</b> {$handledByInfo}";
+        } else {
+            $lines[] = "<b>👉 ការងារត្រូវធ្វើ (ACTION REQUIRED):</b>";
+            $lines[] = "<i>តុលេខ {$tableNumber} បានស្នើសុំទូទាត់គិតលុយ! សូមយកវិក្កយបត្រទៅកាន់តុលេខ {$tableNumber} ដើម្បីប្រមូលប្រាក់។</i>";
+        }
         $lines[] = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
 
         return implode("\n", $lines);
