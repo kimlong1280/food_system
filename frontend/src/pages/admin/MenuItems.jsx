@@ -7,6 +7,9 @@ import {
   FiStar,
   FiCheckCircle,
   FiXCircle,
+  FiX,
+  FiCoffee,
+  FiTag,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
@@ -185,7 +188,7 @@ const MenuItems = () => {
         prev.map((i) => (i.id === item.id ? { ...i, is_featured: res.data.is_featured } : i))
       )
       toast.success(
-        `"${item.name}" ${res.data.is_featured ? 'marked as Popular' : 'removed from Popular'}!`
+        `"${item.name}" ${res.data.is_featured ? 'marked as Featured' : 'unmarked from Featured'}!`
       )
     } catch {
       toast.error('Failed to toggle featured status.')
@@ -208,84 +211,255 @@ const MenuItems = () => {
   }
 
   const filteredItems = items.filter((item) => {
-    if (selectedCategory && item.category_id !== parseInt(selectedCategory)) return false
-    if (selectedType && item.type !== selectedType) return false
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      return item.name.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q)
-    }
-    return true
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    const matchesCategory = selectedCategory ? String(item.category_id) === String(selectedCategory) : true
+    const matchesType = selectedType ? item.type === selectedType : true
+
+    return matchesSearch && matchesCategory && matchesType
   })
+
+  const inStockCount = items.filter((i) => i.is_available).length
+  const soldOutCount = items.filter((i) => !i.is_available).length
 
   if (loading) return <PageLoading text="Loading menu items..." />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Menu Items</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage food, drinks, desserts, prices, and stock availability.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Menu Items</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
+              {filteredItems.length} dishes
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+            <span>In stock: <strong className="text-emerald-600">{inStockCount}</strong></span>
+            <span>•</span>
+            <span>Sold out: <strong className="text-rose-600">{soldOutCount}</strong></span>
+          </div>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
-          <FiPlus className="w-4 h-4" />
+          <FiPlus className="w-4 h-4 stroke-[3]" />
           <span>Add New Dish</span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="sm:col-span-2 relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <FiSearch className="w-4 h-4" />
+      <div className="space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="sm:col-span-2 relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <FiSearch className="w-4 h-4" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search dishes by name or description..."
+              className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search dishes by name or description..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
-          />
+
+          <div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs cursor-pointer"
+            >
+              <option value="">All Categories ({categories.length})</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs cursor-pointer"
+            >
+              <option value="">All Types</option>
+              <option value="food">Food</option>
+              <option value="drink">Drinks</option>
+              <option value="dessert">Desserts</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+        {/* Quick Category Pills on Mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+          <button
+            onClick={() => setSelectedCategory('')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              !selectedCategory
+                ? 'bg-orange-600 text-white shadow-xs'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
           >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs"
-          >
-            <option value="">All Types</option>
-            <option value="food">Food</option>
-            <option value="drink">Drinks</option>
-            <option value="dessert">Desserts</option>
-            <option value="other">Other</option>
-          </select>
+            All Items
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(String(c.id))}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                String(selectedCategory) === String(c.id)
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Menu Items Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* ========================================================================= */}
+      {/* MOBILE VIEW (Smartphone screens < 768px): Thumb-Friendly Dish Cards */}
+      {/* ========================================================================= */}
+      <div className="block md:hidden space-y-3">
+        {filteredItems.length > 0 ? (
+          filteredItems.map((item) => (
+            <div
+              key={item.id}
+              className={`bg-white rounded-3xl p-4 border transition-all shadow-xs space-y-3 ${
+                !item.is_available ? 'border-slate-200 bg-slate-50/50 opacity-90' : 'border-slate-200/80'
+              }`}
+            >
+              {/* Top Dish Info */}
+              <div className="flex items-start gap-3">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 relative">
+                  <img
+                    src={
+                      item.image ||
+                      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=160&auto=format&fit=crop&q=80'
+                    }
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=160&auto=format&fit=crop&q=80'
+                    }}
+                  />
+                  {item.is_featured && (
+                    <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-xs text-[10px]">
+                      ★
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-1">
+                    <h3 className="font-extrabold text-sm text-slate-900 truncate">{item.name}</h3>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
+                      {item.type}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                    {item.description || item.category_name}
+                  </p>
+
+                  <div className="mt-2 flex items-baseline gap-1.5">
+                    <span className="font-black text-orange-600 text-sm">{item.formatted_price}</span>
+                    <span className="font-bold text-slate-400 text-xs">
+                      ({item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1-Tap Quick Toggles Row (Stock & Featured) */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                {/* 1-Tap In Stock / Sold Out Switch */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleAvailability(item)}
+                  className={`py-2 px-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                    item.is_available
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}
+                >
+                  {item.is_available ? (
+                    <>
+                      <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>In Stock</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiXCircle className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Sold Out</span>
+                    </>
+                  )}
+                </button>
+
+                {/* 1-Tap Featured Switch */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleFeatured(item)}
+                  className={`py-2 px-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                    item.is_featured
+                      ? 'bg-amber-50 text-amber-800 border border-amber-300'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}
+                >
+                  <FiStar className={`w-3.5 h-3.5 ${item.is_featured ? 'fill-amber-400 text-amber-500' : ''}`} />
+                  <span>{item.is_featured ? 'Featured' : 'Standard'}</span>
+                </button>
+              </div>
+
+              {/* Edit & Delete Action Row */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenModal(item)}
+                  className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                >
+                  <FiEdit2 className="w-3.5 h-3.5" />
+                  <span>Edit Dish</span>
+                </button>
+                <button
+                  onClick={() => setDeletingItem(item)}
+                  className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95"
+                  title="Delete"
+                >
+                  <FiTrash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
+            <FiCoffee className="w-6 h-6 mx-auto text-slate-300 mb-1" />
+            <p className="font-bold text-slate-600 text-sm">No dishes found</p>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* DESKTOP VIEW (Screens >= 768px): Full Table */}
+      {/* ========================================================================= */}
+      <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
@@ -293,7 +467,7 @@ const MenuItems = () => {
                 <th className="py-3.5 px-4 font-bold">Image</th>
                 <th className="py-3.5 px-4 font-bold">Dish Name</th>
                 <th className="py-3.5 px-4 font-bold">Category</th>
-                <th className="py-3.5 px-4 font-bold">Price</th>
+                <th className="py-3.5 px-4 font-bold">Price (USD / KHR)</th>
                 <th className="py-3.5 px-4 font-bold">Type</th>
                 <th className="py-3.5 px-4 font-bold text-center">Featured</th>
                 <th className="py-3.5 px-4 font-bold text-center">Available</th>
@@ -313,6 +487,10 @@ const MenuItems = () => {
                           }
                           alt={item.name}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src =
+                              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80'
+                          }}
                         />
                       </div>
                     </td>
@@ -328,9 +506,7 @@ const MenuItems = () => {
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-black text-orange-600 text-sm">
-                        {item.formatted_price}
-                      </div>
+                      <div className="font-black text-orange-600 text-sm">{item.formatted_price}</div>
                       <div className="text-[11px] font-bold text-slate-500">
                         {item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`}
                       </div>
@@ -346,9 +522,9 @@ const MenuItems = () => {
                       <button
                         type="button"
                         onClick={() => handleToggleFeatured(item)}
-                        className={`p-1.5 rounded-lg transition-colors ${
+                        className={`p-2 rounded-xl transition-colors cursor-pointer ${
                           item.is_featured
-                            ? 'text-amber-500 bg-amber-50 hover:bg-amber-100'
+                            ? 'text-amber-500 bg-amber-50 hover:bg-amber-100 border border-amber-200'
                             : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
                         }`}
                         title="Toggle Popular/Featured"
@@ -362,7 +538,7 @@ const MenuItems = () => {
                       <button
                         type="button"
                         onClick={() => handleToggleAvailability(item)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all ${
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
                           item.is_available
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
@@ -386,14 +562,14 @@ const MenuItems = () => {
                     <td className="py-3 px-4 text-right space-x-1">
                       <button
                         onClick={() => handleOpenModal(item)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
                         title="Edit Dish"
                       >
                         <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingItem(item)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
                         title="Delete Dish"
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
@@ -430,7 +606,7 @@ const MenuItems = () => {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Crispy Chicken Burger"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
@@ -443,7 +619,7 @@ const MenuItems = () => {
                 required
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -460,7 +636,7 @@ const MenuItems = () => {
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
               >
                 <option value="food">Food</option>
                 <option value="drink">Drink</option>
@@ -477,11 +653,11 @@ const MenuItems = () => {
               </label>
 
               {/* Currency Selector Toggle */}
-              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px] font-bold">
+              <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
                 <button
                   type="button"
                   onClick={() => setPriceCurrency('USD')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                     priceCurrency === 'USD'
                       ? 'bg-white text-orange-600 shadow-2xs font-extrabold'
                       : 'text-slate-500 hover:text-slate-900'
@@ -497,7 +673,7 @@ const MenuItems = () => {
                       setKhrPrice(Math.round(Number(formData.price) * KHR_RATE).toString())
                     }
                   }}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                     priceCurrency === 'KHR'
                       ? 'bg-white text-orange-600 shadow-2xs font-extrabold'
                       : 'text-slate-500 hover:text-slate-900'
@@ -510,7 +686,7 @@ const MenuItems = () => {
 
             {priceCurrency === 'USD' ? (
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-400 font-bold">$</span>
+                <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold">$</span>
                 <input
                   type="number"
                   step="0.01"
@@ -519,7 +695,7 @@ const MenuItems = () => {
                   value={formData.price}
                   onChange={(e) => handleUsdChange(e.target.value)}
                   placeholder="2.50"
-                  className="w-full pl-7 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 text-sm font-bold"
+                  className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 text-sm font-bold shadow-2xs"
                 />
               </div>
             ) : (
@@ -532,9 +708,9 @@ const MenuItems = () => {
                   value={khrPrice}
                   onChange={(e) => handleKhrChange(e.target.value)}
                   placeholder="10000"
-                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 text-sm font-bold"
+                  className="w-full pl-3.5 pr-8 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 text-sm font-bold shadow-2xs"
                 />
-                <span className="absolute right-3 top-2.5 text-slate-400 font-bold">៛</span>
+                <span className="absolute right-3.5 top-2.5 text-slate-400 font-bold">៛</span>
               </div>
             )}
 
@@ -547,7 +723,7 @@ const MenuItems = () => {
                     key={amt}
                     type="button"
                     onClick={() => handleKhrChange(amt.toString())}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                       khrPrice === amt.toString()
                         ? 'bg-orange-600 text-white shadow-xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600'
@@ -560,7 +736,7 @@ const MenuItems = () => {
             )}
 
             {/* Live Conversion Preview */}
-            <div className="mt-2 flex items-center justify-between text-[11px] p-2 bg-orange-50/70 border border-orange-100 rounded-xl text-orange-900">
+            <div className="mt-2 flex items-center justify-between text-[11px] p-2.5 bg-orange-50/70 border border-orange-100 rounded-2xl text-orange-900">
               <span className="font-medium">
                 {priceCurrency === 'USD' ? (
                   <>
@@ -582,9 +758,7 @@ const MenuItems = () => {
                   </>
                 )}
               </span>
-              <span className="text-[10px] text-orange-600/80 font-bold">
-                (អត្រា $1 = 4,000 ៛)
-              </span>
+              <span className="text-[10px] text-orange-600/80 font-bold">(អត្រា $1 = 4,000 ៛)</span>
             </div>
           </div>
 
@@ -595,56 +769,56 @@ const MenuItems = () => {
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Appetizing description of ingredients, flavor, and cooking style..."
+              placeholder="Appetizing description of ingredients and flavors..."
               rows={2}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full p-3 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Dish Image Upload (or provide URL below)
+              Dish Image Upload
             </label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files[0])}
-              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Image Web URL
+              Or Image Web URL
             </label>
             <input
               type="url"
               value={formData.image}
               onChange={(e) => setFormData({ ...formData, image: e.target.value })}
               placeholder="https://images.unsplash.com/..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <label className="flex items-center gap-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 cursor-pointer shadow-2xs">
               <input
                 type="checkbox"
                 checked={formData.is_available}
                 onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
-                className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4"
+                className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4 cursor-pointer"
               />
-              <span className="font-bold text-slate-800">Available (In Stock)</span>
+              <span className="font-bold text-slate-800">In Stock</span>
             </label>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+            <label className="flex items-center gap-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 cursor-pointer shadow-2xs">
               <input
                 type="checkbox"
                 checked={formData.is_featured}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4"
+                className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4 cursor-pointer"
               />
-              <span className="font-bold text-slate-800">Featured / Popular</span>
+              <span className="font-bold text-slate-800">Featured</span>
             </label>
           </div>
 
@@ -652,14 +826,14 @@ const MenuItems = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+              className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
               {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Create Dish'}
             </button>
@@ -674,7 +848,7 @@ const MenuItems = () => {
         onConfirm={handleDelete}
         loading={deleteLoading}
         title={`Delete "${deletingItem?.name}"?`}
-        message="Are you sure you want to delete this menu item? Note that past orders will still retain their item history."
+        message="Are you sure you want to delete this menu item? Past order history will remain preserved."
       />
     </div>
   )

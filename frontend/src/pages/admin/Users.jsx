@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiEdit2, FiTrash2, FiUser, FiShield } from 'react-icons/fi'
+import {
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
+  FiUser,
+  FiShield,
+  FiSearch,
+  FiX,
+  FiMail,
+} from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -11,6 +20,7 @@ const Users = () => {
   const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -102,28 +112,138 @@ const Users = () => {
     }
   }
 
+  const filteredUsers = users.filter((u) => {
+    const q = searchQuery.toLowerCase()
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+  })
+
   if (loading) return <PageLoading text="Loading staff accounts..." />
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Staff & Admins</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Staff & Admins
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
+              {users.length} accounts
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage administrator and kitchen management accounts.
+            Manage restaurant administrators, managers, and kitchen staff credentials.
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
-          <FiPlus className="w-4 h-4" />
+          <FiPlus className="w-4 h-4 stroke-[3]" />
           <span>Add New Account</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* Search Bar */}
+      <div className="relative max-w-md">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <FiSearch className="w-4 h-4" />
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search accounts by name or email..."
+          className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MOBILE VIEW (Smartphone screens < 768px): Thumb-Friendly Staff Cards */}
+      {/* ========================================================================= */}
+      <div className="block md:hidden space-y-3">
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((u) => {
+            const isCurrent = currentUser?.id === u.id
+
+            return (
+              <div
+                key={u.id}
+                className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs space-y-3"
+              >
+                {/* Header: Avatar, Name, Email, Role */}
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <h3 className="font-extrabold text-sm text-slate-900 truncate">{u.name}</h3>
+                        {isCurrent && (
+                          <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.2 rounded-full font-black shrink-0">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                        <FiShield className="w-2.5 h-2.5" />
+                        <span>{u.role}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-xs text-slate-400 mt-1 truncate">
+                      <FiMail className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{u.email}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Row */}
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                  <button
+                    onClick={() => handleOpenModal(u)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                  >
+                    <FiEdit2 className="w-3.5 h-3.5" />
+                    <span>Edit Details</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDeletingUser(u)}
+                    disabled={isCurrent}
+                    className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 disabled:opacity-25 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                    title={isCurrent ? "You cannot delete your own active account" : "Delete Account"}
+                  >
+                    <FiTrash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
+            <FiUser className="w-6 h-6 mx-auto text-slate-300 mb-1" />
+            <p className="font-bold text-slate-600 text-sm">No accounts found</p>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* DESKTOP VIEW (Screens >= 768px): Full Table */}
+      {/* ========================================================================= */}
+      <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[500px]">
             <thead>
@@ -135,53 +255,61 @@ const Users = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {users.map((u) => {
-                const isCurrent = currentUser?.id === u.id
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => {
+                  const isCurrent = currentUser?.id === u.id
 
-                return (
-                  <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-extrabold text-slate-900">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">
-                          {u.name.charAt(0).toUpperCase()}
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-extrabold text-slate-900">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span>{u.name}</span>
+                            {isCurrent && (
+                              <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                                You
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <span>{u.name}</span>
-                          {isCurrent && (
-                            <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
-                              You
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600">{u.email}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                        <FiShield className="w-3 h-3" />
-                        <span>{u.role}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-1">
-                      <button
-                        onClick={() => handleOpenModal(u)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors"
-                        title="Edit Account"
-                      >
-                        <FiEdit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingUser(u)}
-                        disabled={isCurrent}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 disabled:opacity-30 transition-colors"
-                        title="Delete Account"
-                      >
-                        <FiTrash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">{u.email}</td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                          <FiShield className="w-3 h-3" />
+                          <span>{u.role}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1">
+                        <button
+                          onClick={() => handleOpenModal(u)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
+                          title="Edit Account"
+                        >
+                          <FiEdit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingUser(u)}
+                          disabled={isCurrent}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 disabled:opacity-30 transition-colors cursor-pointer"
+                          title="Delete Account"
+                        >
+                          <FiTrash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-slate-400">
+                    No accounts found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -203,8 +331,8 @@ const Users = () => {
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Alex Johnson"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              placeholder="e.g., Alex Johnson"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-medium"
             />
           </div>
 
@@ -218,13 +346,13 @@ const Users = () => {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="staff@restaurant.com"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-medium"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Password {editingUser && '(Leave blank to keep existing password)'}
+              Password {editingUser && '(Leave blank to keep existing)'}
             </label>
             <input
               type="password"
@@ -233,7 +361,7 @@ const Users = () => {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-medium"
             />
           </div>
 
@@ -244,10 +372,10 @@ const Users = () => {
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 bg-white"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
             >
               <option value="admin">Administrator (Full Access)</option>
-              <option value="customer">Customer</option>
+              <option value="customer">Customer / Staff</option>
             </select>
           </div>
 
@@ -255,14 +383,14 @@ const Users = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+              className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
               {submitting ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}
             </button>

@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiLayers } from 'react-icons/fi'
+import {
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
+  FiSearch,
+  FiLayers,
+  FiCheckCircle,
+  FiXCircle,
+  FiX,
+  FiCoffee,
+} from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import api from '../../services/api'
 import Modal from '../../components/admin/Modal'
@@ -85,7 +95,6 @@ const Categories = () => {
       }
 
       if (editingCategory) {
-        // Use POST with _method=PUT for FormData support in Laravel
         data.append('_method', 'PUT')
         await api.post(`/admin/categories/${editingCategory.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -105,6 +114,19 @@ const Categories = () => {
       toast.error(msg)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleToggleStatus = async (cat) => {
+    try {
+      const nextStatus = !cat.status
+      await api.put(`/admin/categories/${cat.id}`, { status: nextStatus })
+      setCategories((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, status: nextStatus } : c))
+      )
+      toast.success(`"${cat.name}" is now ${nextStatus ? 'Active' : 'Hidden'}!`)
+    } catch {
+      toast.error('Failed to change category status.')
     }
   }
 
@@ -130,29 +152,34 @@ const Categories = () => {
   if (loading) return <PageLoading text="Loading categories..." />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Menu Categories
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Menu Categories
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
+              {categories.length}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Organize dishes into sections like Food, Drinks, Desserts, and Coffee.
+            Organize dishes into sections like Food, Drinks, Coffee, and Desserts.
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
-          <FiPlus className="w-4 h-4" />
+          <FiPlus className="w-4 h-4 stroke-[3]" />
           <span>Add New Category</span>
         </button>
       </div>
 
       {/* Search Input */}
-      <div className="max-w-md relative">
+      <div className="relative max-w-md">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
           <FiSearch className="w-4 h-4" />
         </div>
@@ -161,12 +188,110 @@ const Categories = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search categories..."
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+          className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
         />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Categories Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* ========================================================================= */}
+      {/* MOBILE VIEW (Smartphone screens < 768px): Thumb-Friendly Category Cards */}
+      {/* ========================================================================= */}
+      <div className="block md:hidden space-y-3">
+        {filteredCategories.length > 0 ? (
+          filteredCategories.map((cat) => (
+            <div
+              key={cat.id}
+              className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs space-y-3"
+            >
+              {/* Category Info Row */}
+              <div className="flex items-start gap-3">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                  <img
+                    src={
+                      cat.image ||
+                      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&auto=format&fit=crop&q=80'
+                    }
+                    alt={cat.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&auto=format&fit=crop&q=80'
+                    }}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-slate-900 truncate">
+                      {cat.name}
+                    </h3>
+                    <span className="text-[11px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">
+                      #{cat.sort_order}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                    {cat.description || 'No description added'}
+                  </p>
+
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
+                      {cat.menu_items_count || 0} dishes
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(cat)}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all cursor-pointer ${
+                        cat.status
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      }`}
+                    >
+                      {cat.status ? '🟢 Active' : '⚪ Hidden'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Row */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                <button
+                  onClick={() => handleOpenModal(cat)}
+                  className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                >
+                  <FiEdit2 className="w-3.5 h-3.5" />
+                  <span>Edit Category</span>
+                </button>
+                <button
+                  onClick={() => setDeletingCategory(cat)}
+                  className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95"
+                  title="Delete"
+                >
+                  <FiTrash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
+            <FiLayers className="w-6 h-6 mx-auto text-slate-300 mb-1" />
+            <p className="font-bold text-slate-600 text-sm">No categories found</p>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* DESKTOP VIEW (Screens >= 768px): Full Table */}
+      {/* ========================================================================= */}
+      <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[650px]">
             <thead>
@@ -176,7 +301,7 @@ const Categories = () => {
                 <th className="py-3.5 px-4 font-bold">Category Name</th>
                 <th className="py-3.5 px-4 font-bold">Description</th>
                 <th className="py-3.5 px-4 font-bold">Items Count</th>
-                <th className="py-3.5 px-4 font-bold">Status</th>
+                <th className="py-3.5 px-4 font-bold text-center">Status</th>
                 <th className="py-3.5 px-4 font-bold text-right">Actions</th>
               </tr>
             </thead>
@@ -194,6 +319,10 @@ const Categories = () => {
                           }
                           alt={cat.name}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src =
+                              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80'
+                          }}
                         />
                       </div>
                     </td>
@@ -206,28 +335,41 @@ const Categories = () => {
                         {cat.menu_items_count || 0} items
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(cat)}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
                           cat.status
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                         }`}
+                        title="Click to toggle status"
                       >
-                        {cat.status ? 'Active' : 'Hidden'}
-                      </span>
+                        {cat.status ? (
+                          <>
+                            <FiCheckCircle className="w-3 h-3 text-emerald-600" />
+                            <span>Active</span>
+                          </>
+                        ) : (
+                          <>
+                            <FiXCircle className="w-3 h-3 text-slate-400" />
+                            <span>Hidden</span>
+                          </>
+                        )}
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-right space-x-1">
                       <button
                         onClick={() => handleOpenModal(cat)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
                         title="Edit Category"
                       >
                         <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingCategory(cat)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
                         title="Delete Category"
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
@@ -263,8 +405,8 @@ const Categories = () => {
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Food, Drinks, Special Menu..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              placeholder="e.g., Food, Drinks, Desserts, Coffee..."
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
@@ -277,7 +419,7 @@ const Categories = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Short description for the menu section..."
               rows={2}
-              className="w-full p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full p-3 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
@@ -289,8 +431,10 @@ const Categories = () => {
               <input
                 type="number"
                 value={formData.sort_order}
-                onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+                onChange={(e) =>
+                  setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })
+                }
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
               />
             </div>
 
@@ -301,7 +445,7 @@ const Categories = () => {
               <select
                 value={formData.status ? '1' : '0'}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value === '1' })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
               >
                 <option value="1">Active (Visible)</option>
                 <option value="0">Hidden</option>
@@ -311,26 +455,26 @@ const Categories = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Upload Image File (or provide URL below)
+              Upload Image File
             </label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files[0])}
-              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Image Web URL
+              Or Image URL
             </label>
             <input
               type="url"
               value={formData.image}
               onChange={(e) => setFormData({ ...formData, image: e.target.value })}
               placeholder="https://images.unsplash.com/..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
@@ -338,14 +482,14 @@ const Categories = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+              className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50"
+              className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
               {submitting ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Category'}
             </button>
