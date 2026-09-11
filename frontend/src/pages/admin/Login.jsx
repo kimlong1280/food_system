@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiLock, FiMail, FiArrowRight } from 'react-icons/fi'
+import { FiLock, FiMail, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { Spinner } from '../../components/Loading'
@@ -9,8 +9,9 @@ const Login = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const [email, setEmail] = useState('admin@example.com')
-  const [password, setPassword] = useState('password')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -66,7 +67,8 @@ const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
+                  placeholder="Enter your email"
+                  autoComplete="email"
                   className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
               </div>
@@ -81,34 +83,22 @@ const Login = () => {
                   <FiLock className="w-4 h-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  className="w-full pl-10 pr-10 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
-              </div>
-            </div>
-
-            {/* Default Credentials Helper */}
-            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 text-xs flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 font-semibold">Admin Credentials:</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setEmail('admin@example.com')
-                    setPassword('password')
-                  }}
-                  className="text-[11px] font-bold text-orange-400 hover:text-orange-300 underline cursor-pointer"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  Fill Default
+                  {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
                 </button>
-              </div>
-              <div className="flex items-center justify-between text-slate-300 font-mono text-[11px]">
-                <span>admin@example.com</span>
-                <span>password</span>
               </div>
             </div>
 
