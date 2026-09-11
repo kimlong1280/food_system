@@ -15,14 +15,32 @@ class TelegramNotificationService
     public const CAMBODIA_TIMEZONE = 'Asia/Phnom_Penh';
 
     /**
-     * Send order notification to Telegram group/chat.
+     * Get array of target chat IDs (supports single ID or comma-separated list of IDs).
+     *
+     * @return array<string>
+     */
+    public function getTargetChatIds(): array
+    {
+        $rawChatId = config('telegram.chat_id');
+        if (empty($rawChatId)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map('trim', explode(',', (string) $rawChatId)),
+            fn ($id) => $id !== ''
+        ));
+    }
+
+    /**
+     * Send order notification to Telegram group(s) / chat(s).
      */
     public function sendOrderNotification(Order $order): bool
     {
         $botToken = config('telegram.bot_token');
-        $chatId = config('telegram.chat_id');
+        $chatIds = $this->getTargetChatIds();
 
-        if (empty($botToken) || empty($chatId)) {
+        if (empty($botToken) || empty($chatIds)) {
             Log::info('Telegram notification skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured.');
             return false;
         }
@@ -32,21 +50,7 @@ class TelegramNotificationService
 
             $message = $this->formatOrderReceiptMessage($order);
 
-            $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
-
-            $response = Http::timeout(10)->post($url, [
-                'chat_id' => $chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-            ]);
-
-            if ($response->successful()) {
-                Log::info("Telegram notification sent successfully for order #{$order->order_number}");
-                return true;
-            } else {
-                Log::error("Failed to send Telegram notification for order #{$order->order_number}: " . $response->body());
-                return false;
-            }
+            return $this->sendMessageToChats($botToken, $chatIds, $message, "order #{$order->order_number}");
         } catch (\Throwable $e) {
             // Never break order creation if Telegram fails
             Log::error("Telegram notification exception for order #{$order->order_number}: " . $e->getMessage());
@@ -55,14 +59,14 @@ class TelegramNotificationService
     }
 
     /**
-     * Send bill payment request notification to Telegram group/chat.
+     * Send bill payment request notification to Telegram group(s) / chat(s).
      */
     public function sendPaymentRequestNotification(Table $table, $orders, float $totalAmount, ?string $customerName = null): bool
     {
         $botToken = config('telegram.bot_token');
-        $chatId = config('telegram.chat_id');
+        $chatIds = $this->getTargetChatIds();
 
-        if (empty($botToken) || empty($chatId)) {
+        if (empty($botToken) || empty($chatIds)) {
             Log::info('Telegram payment alert skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured.');
             return false;
         }
@@ -70,25 +74,47 @@ class TelegramNotificationService
         try {
             $message = $this->formatPaymentRequestMessage($table, $orders, $totalAmount, $customerName);
 
-            $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
-
-            $response = Http::timeout(10)->post($url, [
-                'chat_id' => $chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-            ]);
-
-            if ($response->successful()) {
-                Log::info("Telegram bill payment alert sent successfully for Table {$table->table_number}");
-                return true;
-            } else {
-                Log::error("Failed to send Telegram bill payment alert for Table {$table->table_number}: " . $response->body());
-                return false;
-            }
+            return $this->sendMessageToChats($botToken, $chatIds, $message, "Table {$table->table_number} bill payment");
         } catch (\Throwable $e) {
             Log::error("Telegram bill payment alert exception for Table {$table->table_number}: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Send HTML message to one or multiple chat IDs (groups or personal chats).
+     *
+     * @param string $botToken
+     * @param array<string> $chatIds
+     * @param string $message
+     * @param string $context
+     * @return bool True if at least one message was sent successfully
+     */
+    protected function sendMessageToChats(string $botToken, array $chatIds, string $message, string $context = ''): bool
+    {
+        $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+        $successCount = 0;
+
+        foreach ($chatIds as $chatId) {
+            try {
+                $response = Http::timeout(10)->post($url, [
+                    'chat_id' => $chatId,
+                    'text' => $message,
+                    'parse_mode' => 'HTML',
+                ]);
+
+                if ($response->successful()) {
+                    Log::info("Telegram notification ({$context}) sent successfully to [{$chatId}]");
+                    $successCount++;
+                } else {
+                    Log::error("Failed to send Telegram notification ({$context}) to [{$chatId}]: " . $response->body());
+                }
+            } catch (\Throwable $e) {
+                Log::error("Telegram notification exception ({$context}) to [{$chatId}]: " . $e->getMessage());
+            }
+        }
+
+        return $successCount > 0;
     }
 
     /**

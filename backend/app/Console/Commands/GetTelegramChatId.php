@@ -13,14 +13,17 @@ class GetTelegramChatId extends Command
      *
      * @var string
      */
-    protected $signature = 'telegram:get-chat-id {--token= : Bot token to query} {--save : Automatically save chat ID to .env}';
+    protected $signature = 'telegram:get-chat-id
+                            {--token= : Bot token to query}
+                            {--group : Automatically pick the first active group}
+                            {--both : Save both the group ID and personal chat ID (comma-separated)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Find your Telegram chat ID from recent messages sent to your bot';
+    protected $description = 'Find your Telegram chat/group IDs from recent messages or memberships';
 
     /**
      * Execute the console command.
@@ -36,7 +39,7 @@ class GetTelegramChatId extends Command
             return 1;
         }
 
-        $this->info("Checking for recent messages sent to your bot...");
+        $this->info("Checking Telegram updates for recent messages & group memberships...");
         $url = "https://api.telegram.org/bot{$botToken}/getUpdates";
 
         try {
@@ -51,40 +54,95 @@ class GetTelegramChatId extends Command
             $updates = $data['result'] ?? [];
 
             if (empty($updates)) {
-                $this->warn('No recent messages found for this bot!');
-                $this->line('👉 Please open Telegram, search for your bot, and send it a message (like /start or "hello").');
-                $this->line('Then run this command again.');
+                $this->warn('No recent messages or group updates found for this bot!');
+                $this->displayHelpInstructions();
                 return 1;
             }
 
-            $lastUpdate = end($updates);
-            $message = $lastUpdate['message'] ?? $lastUpdate['channel_post'] ?? $lastUpdate['my_chat_member'] ?? null;
+            $groups = [];
+            $privateChats = [];
 
-            if (!$message || !isset($message['chat']['id'])) {
-                $this->error('Could not extract chat ID from the latest update:');
-                $this->line(json_encode($lastUpdate, JSON_PRETTY_PRINT));
-                return 1;
+            foreach ($updates as $update) {
+                $chat = $update['message']['chat'] ?? $update['my_chat_member']['chat'] ?? $update['channel_post']['chat'] ?? null;
+                if (!$chat || !isset($chat['id'])) {
+                    continue;
+                }
+
+                $chatId = (string) $chat['id'];
+                $type = $chat['type'] ?? 'unknown';
+                $title = $chat['title'] ?? ($chat['first_name'] ?? 'Unknown');
+                $username = $chat['username'] ?? '';
+                $status = $update['my_chat_member']['new_chat_member']['status'] ?? null;
+
+                if (in_array($type, ['group', 'supergroup', 'channel'])) {
+                    if (!isset($groups[$chatId]) || $status !== null) {
+                        $groups[$chatId] = [
+                            'id' => $chatId,
+                            'title' => $title,
+                            'type' => $type,
+                            'status' => $status ?? ($groups[$chatId]['status'] ?? 'active'),
+                        ];
+                    }
+                } elseif ($type === 'private') {
+                    $privateChats[$chatId] = [
+                        'id' => $chatId,
+                        'title' => $title,
+                        'username' => $username ? "@{$username}" : '',
+                        'type' => 'private',
+                    ];
+                }
             }
 
-            $chatId = $message['chat']['id'];
-            $chatType = $message['chat']['type'] ?? 'private';
-            $chatName = $message['chat']['title'] ?? ($message['chat']['first_name'] ?? 'User');
+            // Separate active groups from groups the bot left
+            $activeGroups = array_filter($groups, fn ($g) => !in_array($g['status'], ['left', 'kicked']));
 
-            $this->info("✅ Found Chat ID!");
-            $this->line("   Chat ID:   <fg=bright-green;options=bold>{$chatId}</>");
-            $this->line("   Chat Type: {$chatType}");
-            $this->line("   Name:      {$chatName}");
+            $this->newLine();
+            $this->info("=== FOUND TELEGRAM CHATS ===");
 
-            $envPath = base_path('.env');
-            if (File::exists($envPath)) {
-                $envContent = File::get($envPath);
-                $envContent = preg_replace(
-                    '/^TELEGRAM_CHAT_ID=.*$/m',
-                    "TELEGRAM_CHAT_ID={$chatId}",
-                    $envContent
-                );
-                File::put($envPath, $envContent);
-                $this->info("💾 Saved TELEGRAM_CHAT_ID={$chatId} into backend/.env!");
+            if (!empty($groups)) {
+                $this->line("<fg=yellow;options=bold>📁 GROUPS & CHANNELS:</>");
+                foreach ($groups as $id => $g) {
+                    $statusTag = $g['status'] === 'left' ? "<fg=red>[BOT LEFT/REMOVED]</>" : "<fg=green>[ACTIVE {$g['status']}]</>";
+                    $this->line("   • <fg=bright-cyan>{$g['title']}</> ({$g['type']}) {$statusTag}");
+                    $this->line("     Chat ID: <fg=bright-green;options=bold>{$id}</>");
+                }
+            }
+
+            if (!empty($privateChats)) {
+                $this->line("<fg=yellow;options=bold>👤 PERSONAL CHATS (1-on-1):</>");
+                foreach ($privateChats as $id => $p) {
+                    $this->line("   • <fg=bright-cyan>{$p['title']}</> {$p['username']}");
+                    $this->line("     Chat ID: <fg=bright-blue>{$id}</>");
+                }
+            }
+
+            // Determine target to save
+            $selectedId = null;
+
+            if ($this->option('both') && !empty($activeGroups) && !empty($privateChats)) {
+                $firstGroup = reset($activeGroups);
+                $firstPrivate = reset($privateChats);
+                $selectedId = "{$firstGroup['id']},{$firstPrivate['id']}";
+                $this->info("Selecting BOTH group '{$firstGroup['title']}' AND personal chat '{$firstPrivate['title']}'");
+            } elseif ($this->option('group') || !empty($activeGroups)) {
+                // Priority: auto-pick active group
+                $firstGroup = reset($activeGroups);
+                $selectedId = $firstGroup['id'];
+                $this->info("Selecting active group: <fg=bright-green>{$firstGroup['title']}</> ({$selectedId})");
+            } elseif (!empty($groups)) {
+                $firstGroup = reset($groups);
+                $selectedId = $firstGroup['id'];
+                $this->warn("Note: Bot may have left '{$firstGroup['title']}'. Saving ID: {$selectedId}");
+            } elseif (!empty($privateChats)) {
+                $firstPrivate = reset($privateChats);
+                $selectedId = $firstPrivate['id'];
+                $this->info("Selecting personal chat: {$firstPrivate['title']} ({$selectedId})");
+            }
+
+            if ($selectedId) {
+                $this->saveChatIdToEnv($selectedId);
+            } else {
+                $this->displayHelpInstructions();
             }
 
             return 0;
@@ -92,5 +150,40 @@ class GetTelegramChatId extends Command
             $this->error('Error contacting Telegram: ' . $e->getMessage());
             return 1;
         }
+    }
+
+    protected function saveChatIdToEnv(string $chatId): void
+    {
+        $envPath = base_path('.env');
+        if (File::exists($envPath)) {
+            $envContent = File::get($envPath);
+            if (preg_match('/^TELEGRAM_CHAT_ID=.*$/m', $envContent)) {
+                $envContent = preg_replace(
+                    '/^TELEGRAM_CHAT_ID=.*$/m',
+                    "TELEGRAM_CHAT_ID={$chatId}",
+                    $envContent
+                );
+            } else {
+                $envContent .= "\nTELEGRAM_CHAT_ID={$chatId}\n";
+            }
+            File::put($envPath, $envContent);
+            $this->info("💾 Saved TELEGRAM_CHAT_ID={$chatId} into backend/.env!");
+            $this->line("👉 Run <fg=yellow>php artisan telegram:test</> to verify delivery to your group!");
+        }
+    }
+
+    protected function displayHelpInstructions(): void
+    {
+        $this->newLine();
+        $this->line("<fg=yellow;options=bold>┌─────────────────────────────────────────────────────────────┐</>");
+        $this->line("<fg=yellow;options=bold>│ HOW TO CONNECT YOUR TELEGRAM BOT TO A GROUP (FOR MEMBERS)   │</>");
+        $this->line("<fg=yellow;options=bold>└─────────────────────────────────────────────────────────────┘</>");
+        $this->line("1. Open Telegram and open your Staff / Team Group.");
+        $this->line("2. Add your bot (<fg=bright-cyan>@SK_Ordering_Bot</>) as a Member to the group.");
+        $this->line("3. Promote the bot to <fg=bright-green;options=bold>Administrator</> of the group.");
+        $this->line("   (Or ensure 'Send Messages' permission is turned ON).");
+        $this->line("4. Send a command in the group: <fg=bright-yellow>/start</> or <fg=bright-yellow>@SK_Ordering_Bot</> hello.");
+        $this->line("5. Run this command again: <fg=yellow>php artisan telegram:get-chat-id</>");
+        $this->newLine();
     }
 }

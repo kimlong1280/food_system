@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\TelegramNotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -24,10 +25,10 @@ class TestTelegramNotification extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(TelegramNotificationService $service)
     {
         $botToken = config('telegram.bot_token');
-        $chatId = $this->option('chat_id') ?: config('telegram.chat_id');
+        $rawChatId = $this->option('chat_id') ?: config('telegram.chat_id');
 
         if (empty($botToken)) {
             $this->error('TELEGRAM_BOT_TOKEN is missing in backend/.env!');
@@ -35,22 +36,29 @@ class TestTelegramNotification extends Command
             return 1;
         }
 
-        if (empty($chatId)) {
+        if (empty($rawChatId)) {
             $this->error('TELEGRAM_CHAT_ID is missing in backend/.env!');
             $this->info('Please set TELEGRAM_CHAT_ID in backend/.env or provide --chat_id=YOUR_ID.');
             return 1;
         }
 
-        $this->info("Testing Telegram notification...");
-        $this->line("Bot Token: " . substr($botToken, 0, 8) . '...' . substr($botToken, -4));
-        $this->line("Chat ID: {$chatId}");
+        $chatIds = array_values(array_filter(
+            array_map('trim', explode(',', (string) $rawChatId)),
+            fn ($id) => $id !== ''
+        ));
 
-        $nowKh = now(\App\Services\TelegramNotificationService::CAMBODIA_TIMEZONE);
+        $this->info("Testing Telegram notification delivery...");
+        $this->line("Bot Token: " . substr($botToken, 0, 8) . '...' . substr($botToken, -4));
+        $this->line("Target Chats (" . count($chatIds) . "): " . implode(', ', $chatIds));
+
+        $nowKh = now(TelegramNotificationService::CAMBODIA_TIMEZONE);
         $dateKh = $nowKh->format('d/m/Y');
         $timeKh = $nowKh->format('h:i A');
 
+        $appName = strtoupper(htmlspecialchars(config('app.name', 'SreyKeo Coffee & Soup'), ENT_QUOTES, 'UTF-8'));
+
         $sampleText = "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
-        $sampleText .= "<b>   SREYKEY COFFEE & SOUP</b>\n";
+        $sampleText .= "<b>   {$appName}</b>\n";
         $sampleText .= "<b>         [ ORDER TICKET ]</b>\n";
         $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>\n";
         $sampleText .= "<b>◆ ORDER NO   :</b> <code>#TEST-0001</code>\n";
@@ -75,25 +83,38 @@ class TestTelegramNotification extends Command
         $sampleText .= "<b>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</b>";
 
         $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+        $allSuccess = true;
 
-        try {
-            $response = Http::timeout(10)->post($url, [
-                'chat_id' => $chatId,
-                'text' => $sampleText,
-                'parse_mode' => 'HTML',
-            ]);
+        foreach ($chatIds as $chatId) {
+            $isGroup = str_starts_with($chatId, '-');
+            $typeLabel = $isGroup ? "<fg=yellow>[GROUP / ALL MEMBERS]</>" : "<fg=cyan>[PERSONAL CHAT]</>";
 
-            if ($response->successful()) {
-                $this->info('✅ Telegram test message sent successfully with table format and Cambodia time!');
-                return 0;
-            } else {
-                $this->error('❌ Telegram API returned an error:');
-                $this->line($response->body());
-                return 1;
+            $this->newLine();
+            $this->line("Sending to {$typeLabel} <fg=bright-white;options=bold>{$chatId}</>...");
+
+            try {
+                $response = Http::timeout(10)->post($url, [
+                    'chat_id' => $chatId,
+                    'text' => $sampleText,
+                    'parse_mode' => 'HTML',
+                ]);
+
+                if ($response->successful()) {
+                    if ($isGroup) {
+                        $this->info("✅ SUCCESS: Sent to group! ALL members in this group can see this alert!");
+                    } else {
+                        $this->info("✅ SUCCESS: Sent to personal chat!");
+                    }
+                } else {
+                    $allSuccess = false;
+                    $this->error("❌ FAILED for {$chatId}: " . $response->body());
+                }
+            } catch (\Throwable $e) {
+                $allSuccess = false;
+                $this->error("❌ Exception for {$chatId}: " . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            $this->error('❌ Exception occurred while contacting Telegram: ' . $e->getMessage());
-            return 1;
         }
+
+        return $allSuccess ? 0 : 1;
     }
 }
