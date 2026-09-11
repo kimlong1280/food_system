@@ -38,6 +38,7 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [expandedOrderIds, setExpandedOrderIds] = useState({})
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
 
   const toggleExpand = (id) => {
     setExpandedOrderIds((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -56,86 +57,63 @@ const Orders = () => {
       const res = await api.get('/admin/orders', { params })
       setOrders(res.data.data || [])
       setLastSyncedTime(new Date())
-      if (isManual) toast.success('Orders refreshed!')
     } catch {
-      toast.error('Failed to load orders.')
+      toast.error('Failed to fetch live orders.')
     } finally {
       setLoading(false)
       if (isManual) setRefreshing(false)
     }
   }, [statusFilter, searchQuery, dateFilter])
 
+  // Polling for live orders every 10 seconds
   useEffect(() => {
     fetchOrders()
-  }, [fetchOrders])
 
-  // Live Auto-Sync every 10 seconds for active smartphone management
-  useEffect(() => {
     if (!autoSync) return
+
     const interval = setInterval(() => {
-      fetchOrders(false)
+      fetchOrders()
     }, 10000)
+
     return () => clearInterval(interval)
-  }, [autoSync, fetchOrders])
+  }, [fetchOrders, autoSync])
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     setStatusUpdating(true)
     try {
-      const res = await api.put(`/admin/orders/${orderId}/status`, { status: newStatus })
-      const updatedOrder = res.data.order
-
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-      )
-
+      await api.put(`/admin/orders/${orderId}/status`, { status: newStatus })
+      toast.success(`Order #${orderId} marked as ${newStatus.toUpperCase()}!`)
+      await fetchOrders()
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(updatedOrder)
+        setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
       }
-
-      toast.success(`Order status updated to "${newStatus}"!`)
-    } catch {
-      toast.error('Failed to update status.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update order status.')
     } finally {
       setStatusUpdating(false)
     }
   }
 
-  // Filter orders client-side for special bill filter or combined search
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      if (statusFilter === 'bill') {
-        return (
-          order.is_payment_requested &&
-          order.status !== 'completed' &&
-          order.status !== 'cancelled'
-        )
-      }
-      if (statusFilter !== 'all' && order.status !== statusFilter) {
-        return false
-      }
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase()
-        const orderNum = String(order.order_number || '').toLowerCase()
-        const customer = String(order.customer_name || '').toLowerCase()
-        const tableNum = String(order.table_number || '').toLowerCase()
-        if (
-          !orderNum.includes(query) &&
-          !customer.includes(query) &&
-          !tableNum.includes(query)
-        ) {
-          return false
-        }
-      }
-      return true
-    })
-  }, [orders, statusFilter, searchQuery])
+    if (statusFilter === 'all') return orders
+    if (statusFilter === 'bill') {
+      return orders.filter(
+        (o) =>
+          o.is_payment_requested &&
+          o.status !== 'completed' &&
+          o.status !== 'cancelled'
+      )
+    }
+    return orders.filter(
+      (o) => o.status?.toLowerCase() === statusFilter.toLowerCase()
+    )
+  }, [orders, statusFilter])
 
-  // Real-time status counts for quick chips
+  // Tab badge counts
   const counts = useMemo(() => {
     return {
       all: orders.length,
       pending: orders.filter((o) => o.status === 'pending').length,
-      confirmed: orders.filter((o) => o.status === 'confirmed').length,
       preparing: orders.filter((o) => o.status === 'preparing').length,
       ready: orders.filter((o) => o.status === 'ready').length,
       served: orders.filter((o) => o.status === 'served').length,
@@ -164,61 +142,78 @@ const Orders = () => {
   if (loading) return <PageLoading text="Fetching orders..." />
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* Header with Auto-Sync and Mobile Ergonomics */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div>
+      <div className="bg-white p-3 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
               Live Orders
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
-              {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
+              {filteredOrders.length}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Real-time smartphone & kitchen order confirmation and status tracking.
-          </p>
+
+          <div className="flex items-center gap-1.5">
+            {/* Search Toggle Icon on Mobile */}
+            <button
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all sm:hidden cursor-pointer ${
+                showMobileSearch || searchQuery
+                  ? 'bg-orange-50 border-orange-200 text-orange-600'
+                  : 'bg-white border-slate-200 text-slate-600'
+              }`}
+              title="Search"
+            >
+              <FiSearch className="w-4 h-4" />
+            </button>
+
+            {/* Auto-Sync Toggle Pill */}
+            <button
+              onClick={() => setAutoSync(!autoSync)}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                autoSync
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+              title="Toggle live 10s auto-refresh"
+            >
+              <span className={`w-2 h-2 rounded-full ${autoSync ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+              <span className="hidden sm:inline">
+                {autoSync
+                  ? `Live Sync (${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
+                  : 'Sync Paused'}
+              </span>
+              <span className="sm:hidden text-[11px]">
+                {autoSync ? 'Live' : 'Paused'}
+              </span>
+            </button>
+
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => fetchOrders(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1 p-2 sm:px-3.5 sm:py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer active:scale-95 transition-all"
+            >
+              <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-600' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
-          {/* Auto-Sync Toggle Pill */}
-          <button
-            onClick={() => setAutoSync(!autoSync)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              autoSync
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-slate-100 text-slate-500 border border-slate-200'
-            }`}
-            title="Toggle live 10s auto-refresh"
-          >
-            <span className={`w-2 h-2 rounded-full ${autoSync ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
-            <span>
-              {autoSync
-                ? `Live Sync (${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
-                : 'Sync Paused'}
-            </span>
-          </button>
-
-          {/* Manual Refresh Button */}
-          <button
-            onClick={() => fetchOrders(true)}
-            disabled={refreshing}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer active:scale-95 transition-all"
-          >
-            <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-600' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
+        <p className="hidden sm:block text-xs text-slate-500 mt-1">
+          Real-time smartphone & kitchen order confirmation and status tracking.
+        </p>
       </div>
 
       {/* Filter Tabs with Live Badges (Horizontal scroll on mobile) */}
-      <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar pb-0.5">
         {statuses.map((st) => (
           <button
             key={st.id}
             onClick={() => setStatusFilter(st.id)}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold tracking-wide transition-all active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-xs font-bold tracking-wide transition-all active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer ${
               statusFilter === st.id
                 ? 'bg-orange-600 text-white shadow-md shadow-orange-600/25'
                 : st.highlight && st.count > 0
@@ -244,8 +239,8 @@ const Orders = () => {
         ))}
       </div>
 
-      {/* Search and Date Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+      {/* Search and Date Controls (Collapsible on Mobile, Grid on Desktop) */}
+      <div className={`${showMobileSearch || searchQuery ? 'grid' : 'hidden sm:grid'} grid-cols-1 sm:grid-cols-3 gap-2`}>
         <div className="sm:col-span-2 relative">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
             <FiSearch className="w-4 h-4" />
@@ -255,7 +250,7 @@ const Orders = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Quick search by Table #, Order # or Customer..."
-            className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+            className="w-full pl-10 pr-9 py-2 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
           />
           {searchQuery && (
             <button
@@ -272,7 +267,7 @@ const Orders = () => {
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs"
+            className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs"
           />
           {dateFilter && (
             <button
