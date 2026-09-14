@@ -10,23 +10,26 @@ import {
   FiMapPin,
 } from 'react-icons/fi'
 import Sidebar from '../components/admin/Sidebar'
+import AdminLanguageSwitch from '../components/admin/AdminLanguageSwitch'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { PageLoading } from '../components/Loading'
 
 const AdminLayout = () => {
   const { isAuthenticated, loading } = useAuth()
+  const { t } = useLanguage()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const mobileNavItems = [
-    { to: '/admin/orders', label: 'Orders', icon: <FiShoppingBag className="w-5 h-5" /> },
-    { to: '/admin/dashboard', label: 'Dashboard', icon: <FiGrid className="w-5 h-5" /> },
-    { to: '/admin/categories', label: 'Categories', icon: <FiLayers className="w-5 h-5" /> },
-    { to: '/admin/menu-items', label: 'Menu', icon: <FiCoffee className="w-5 h-5" /> },
-    { to: '/admin/tables', label: 'Tables', icon: <FiMapPin className="w-5 h-5" /> },
+    { to: '/admin/orders', label: t('navOrders'), icon: <FiShoppingBag className="w-5 h-5" /> },
+    { to: '/admin/dashboard', label: t('navDashboard'), icon: <FiGrid className="w-5 h-5" /> },
+    { to: '/admin/categories', label: t('navCategories'), icon: <FiLayers className="w-5 h-5" /> },
+    { to: '/admin/menu-items', label: t('navMenuItems'), icon: <FiCoffee className="w-5 h-5" /> },
+    { to: '/admin/tables', label: t('navTables'), icon: <FiMapPin className="w-5 h-5" /> },
   ]
 
   if (loading) {
-    return <PageLoading text="Authenticating administrator..." />
+    return <PageLoading text={t('loading')} />
   }
 
   if (!isAuthenticated) {
@@ -55,26 +58,30 @@ const AdminLayout = () => {
       {/* Main Admin Area */}
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer"
+              className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer shrink-0"
               aria-label="Open Sidebar"
             >
               <FiMenu className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="font-black text-sm sm:text-base lg:text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
-                <span>Restaurant Admin</span>
+            <div className="min-w-0">
+              <h1 className="font-black text-sm sm:text-base lg:text-lg text-slate-900 tracking-tight flex items-center gap-1.5 truncate">
+                <span>{t('restaurantAdmin')}</span>
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Language Switcher */}
+            <AdminLanguageSwitch variant="header" />
+
+            {/* Live Indicator */}
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Kitchen Live</span>
+              <span>{t('kitchenLive')}</span>
             </span>
           </div>
         </header>

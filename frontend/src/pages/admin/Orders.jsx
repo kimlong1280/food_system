@@ -19,8 +19,10 @@ import api from '../../services/api'
 import StatusBadge from '../../components/admin/StatusBadge'
 import Modal from '../../components/admin/Modal'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Orders = () => {
+  const { t } = useLanguage()
   const [searchParams] = useSearchParams()
 
   const [orders, setOrders] = useState([])
@@ -58,12 +60,12 @@ const Orders = () => {
       setOrders(res.data.data || [])
       setLastSyncedTime(new Date())
     } catch {
-      toast.error('Failed to fetch live orders.')
+      toast.error(t('failedFetchOrders'))
     } finally {
       setLoading(false)
       if (isManual) setRefreshing(false)
     }
-  }, [statusFilter, searchQuery, dateFilter])
+  }, [statusFilter, searchQuery, dateFilter, t])
 
   // Polling for live orders every 10 seconds
   useEffect(() => {
@@ -82,13 +84,13 @@ const Orders = () => {
     setStatusUpdating(true)
     try {
       await api.put(`/admin/orders/${orderId}/status`, { status: newStatus })
-      toast.success(`Order #${orderId} marked as ${newStatus.toUpperCase()}!`)
+      toast.success(t('orderStatusUpdated', { id: orderId, status: t(`status${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`) || newStatus.toUpperCase() }))
       await fetchOrders()
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update order status.')
+      toast.error(err.response?.data?.message || t('failedUpdateStatus'))
     } finally {
       setStatusUpdating(false)
     }
@@ -129,17 +131,17 @@ const Orders = () => {
   }, [orders])
 
   const statuses = [
-    { id: 'all', label: 'All', count: counts.all },
-    { id: 'pending', label: 'Pending', count: counts.pending, alert: counts.pending > 0 },
-    { id: 'preparing', label: 'Cooking', count: counts.preparing },
-    { id: 'ready', label: 'Ready', count: counts.ready, alert: counts.ready > 0 },
-    { id: 'served', label: 'Served', count: counts.served },
-    { id: 'bill', label: '🔔 Bill Calls', count: counts.bill, alert: counts.bill > 0, highlight: true },
-    { id: 'completed', label: 'Completed', count: counts.completed },
-    { id: 'cancelled', label: 'Cancelled', count: counts.cancelled },
+    { id: 'all', label: t('allOrders'), count: counts.all },
+    { id: 'pending', label: t('filterPending'), count: counts.pending, alert: counts.pending > 0 },
+    { id: 'preparing', label: t('filterPreparing'), count: counts.preparing },
+    { id: 'ready', label: t('filterReady'), count: counts.ready, alert: counts.ready > 0 },
+    { id: 'served', label: t('filterServed'), count: counts.served },
+    { id: 'bill', label: t('billCalls'), count: counts.bill, alert: counts.bill > 0, highlight: true },
+    { id: 'completed', label: t('filterCompleted'), count: counts.completed },
+    { id: 'cancelled', label: t('filterCancelled'), count: counts.cancelled },
   ]
 
-  if (loading) return <PageLoading text="Fetching orders..." />
+  if (loading) return <PageLoading text={t('loadingOrders')} />
 
   return (
     <div className="space-y-3 sm:space-y-6">
@@ -148,7 +150,7 @@ const Orders = () => {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
-              Live Orders
+              {t('navOrders')}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
               {filteredOrders.length}
@@ -164,7 +166,7 @@ const Orders = () => {
                   ? 'bg-orange-50 border-orange-200 text-orange-600'
                   : 'bg-white border-slate-200 text-slate-600'
               }`}
-              title="Search"
+              title={t('search')}
             >
               <FiSearch className="w-4 h-4" />
             </button>
@@ -177,16 +179,16 @@ const Orders = () => {
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-slate-100 text-slate-500 border border-slate-200'
               }`}
-              title="Toggle live 10s auto-refresh"
+              title={t('autoSyncOn')}
             >
               <span className={`w-2 h-2 rounded-full ${autoSync ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
               <span className="hidden sm:inline">
                 {autoSync
-                  ? `Live Sync (${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
-                  : 'Sync Paused'}
+                  ? `${t('liveSync')} (${lastSyncedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`
+                  : t('syncPaused')}
               </span>
               <span className="sm:hidden text-[11px]">
-                {autoSync ? 'Live' : 'Paused'}
+                {autoSync ? t('liveSync') : t('syncPaused')}
               </span>
             </button>
 
@@ -197,13 +199,13 @@ const Orders = () => {
               className="inline-flex items-center gap-1 p-2 sm:px-3.5 sm:py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs cursor-pointer active:scale-95 transition-all"
             >
               <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-600' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden sm:inline">{t('refresh')}</span>
             </button>
           </div>
         </div>
 
         <p className="hidden sm:block text-xs text-slate-500 mt-1">
-          Real-time smartphone & kitchen order confirmation and status tracking.
+          {t('ordersSubtitle')}
         </p>
       </div>
 
@@ -249,7 +251,7 @@ const Orders = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Quick search by Table #, Order # or Customer..."
+            placeholder={t('quickSearchOrders')}
             className="w-full pl-10 pr-9 py-2 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
           />
           {searchQuery && (
@@ -272,9 +274,9 @@ const Orders = () => {
           {dateFilter && (
             <button
               onClick={() => setDateFilter('')}
-              className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
             >
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>
@@ -310,7 +312,7 @@ const Orders = () => {
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-600 text-white font-black text-xs shadow-2xs">
                       <FiMapPin className="w-3.5 h-3.5" />
-                      <span>Table {order.table_number || order.table?.table_number || 'N/A'}</span>
+                      <span>{t('table')} {order.table_number || order.table?.table_number || 'N/A'}</span>
                     </span>
                     <span className="font-extrabold text-xs text-slate-900">
                       #{order.order_number}
@@ -321,7 +323,7 @@ const Orders = () => {
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="p-1.5 rounded-xl bg-slate-100 text-slate-600 hover:text-orange-600 active:scale-95 cursor-pointer"
-                      title="View Details"
+                      title={t('viewDetails')}
                     >
                       <FiEye className="w-3.5 h-3.5" />
                     </button>
@@ -333,7 +335,7 @@ const Orders = () => {
                   <div className="p-3 rounded-2xl bg-amber-500 text-white flex items-center justify-between shadow-sm animate-pulse">
                     <div className="flex items-center gap-2 text-xs font-black">
                       <span className="text-base">🔔</span>
-                      <span>Guest Calling for Bill!</span>
+                      <span>{t('guestCallingBill')}</span>
                     </div>
                     <button
                       onClick={() => handleUpdateStatus(order.id, 'completed')}
@@ -341,7 +343,7 @@ const Orders = () => {
                       className="px-3 py-1.5 rounded-xl bg-white text-emerald-800 font-black text-xs shadow-xs active:scale-95 hover:bg-emerald-50 cursor-pointer flex items-center gap-1"
                     >
                       <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Confirm Paid</span>
+                      <span>{t('confirmPaid')}</span>
                     </button>
                   </div>
                 )}
@@ -351,7 +353,7 @@ const Orders = () => {
                   <div className="flex items-center gap-1.5">
                     <FiUser className="w-3.5 h-3.5 text-slate-400" />
                     <span className="font-bold text-slate-700">
-                      {order.customer_name || 'Guest (Dine-in)'}
+                      {order.customer_name || t('guestDineIn')}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-[11px] text-slate-400">
@@ -363,7 +365,7 @@ const Orders = () => {
                 {/* Kitchen Special Note */}
                 {order.note && (
                   <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 font-medium">
-                    <span className="font-bold">📝 Kitchen Note: </span>
+                    <span className="font-bold">📝 {t('kitchenNote')}: </span>
                     <span>{order.note}</span>
                   </div>
                 )}
@@ -379,7 +381,7 @@ const Orders = () => {
                             <span className="text-orange-600 font-black">x{item.quantity}</span>
                           </p>
                           {item.note && (
-                            <p className="text-[10px] text-slate-400 italic">Note: {item.note}</p>
+                            <p className="text-[10px] text-slate-400 italic">{t('orderNote')}: {item.note}</p>
                           )}
                         </div>
                         <span className="font-extrabold text-slate-900 shrink-0">
@@ -389,7 +391,7 @@ const Orders = () => {
                     ))
                   ) : (
                     <p className="text-[11px] text-slate-400 italic">
-                      {order.items_count || 1} items ordered
+                      {order.items_count || 1} {t('items')}
                     </p>
                   )}
 
@@ -398,7 +400,7 @@ const Orders = () => {
                       onClick={() => toggleExpand(order.id)}
                       className="w-full text-center pt-1.5 text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <span>{isExpanded ? 'Show less' : `+${items.length - 3} more items`}</span>
+                      <span>{isExpanded ? t('showLess') : t('moreItemsCount', { count: items.length - 3 })}</span>
                       {isExpanded ? <FiChevronUp className="w-3 h-3" /> : <FiChevronDown className="w-3 h-3" />}
                     </button>
                   )}
@@ -409,7 +411,7 @@ const Orders = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Total Amount
+                        {t('totalAmount')}
                       </span>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-lg font-black text-slate-900">
@@ -421,7 +423,7 @@ const Orders = () => {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-slate-400">
-                      {items.length || order.items_count || 1} items
+                      {items.length || order.items_count || 1} {t('items')}
                     </span>
                   </div>
 
@@ -435,20 +437,20 @@ const Orders = () => {
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <FiCheck className="w-4 h-4 stroke-[3]" />
-                          <span>Confirm</span>
+                          <span>{t('confirm')}</span>
                         </button>
                         <button
                           onClick={() => handleUpdateStatus(order.id, 'preparing')}
                           disabled={statusUpdating}
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <span>👨‍🍳 Cook</span>
+                          <span>{t('startCookingAction')}</span>
                         </button>
                         <button
                           onClick={() => handleUpdateStatus(order.id, 'cancelled')}
                           disabled={statusUpdating}
                           className="py-2.5 px-3 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs active:scale-95 transition-transform cursor-pointer"
-                          title="Reject order"
+                          title={t('cancel')}
                         >
                           <FiX className="w-4 h-4" />
                         </button>
@@ -462,13 +464,13 @@ const Orders = () => {
                           disabled={statusUpdating}
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>👨‍🍳 Start Cooking</span>
+                          <span>{t('startCookingAction')}</span>
                         </button>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          Ticket
+                          {t('ticket')}
                         </button>
                       </>
                     )}
@@ -480,13 +482,13 @@ const Orders = () => {
                           disabled={statusUpdating}
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>🔔 Food is Ready</span>
+                          <span>{t('foodReadyAction')}</span>
                         </button>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          Ticket
+                          {t('ticket')}
                         </button>
                       </>
                     )}
@@ -498,13 +500,13 @@ const Orders = () => {
                           disabled={statusUpdating}
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <span>🍽️ Mark Served</span>
+                          <span>{t('markServedAction')}</span>
                         </button>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          Ticket
+                          {t('ticket')}
                         </button>
                       </>
                     )}
@@ -517,13 +519,13 @@ const Orders = () => {
                           className="flex-1 py-2.5 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <FiCheck className="w-4 h-4 stroke-[3]" />
-                          <span>Collect Bill & Finish</span>
+                          <span>{t('collectBillFinishAction')}</span>
                         </button>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          Ticket
+                          {t('ticket')}
                         </button>
                       </>
                     )}
@@ -532,13 +534,13 @@ const Orders = () => {
                       <div className="w-full flex items-center justify-between">
                         <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                           <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>Completed & Settled</span>
+                          <span>{t('completedSettled')}</span>
                         </span>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          View Ticket
+                          {t('viewTicket')}
                         </button>
                       </div>
                     )}
@@ -546,13 +548,13 @@ const Orders = () => {
                     {order.status === 'cancelled' && (
                       <div className="w-full flex items-center justify-between">
                         <span className="text-xs font-bold text-rose-500">
-                          Cancelled Order
+                          {t('cancelledOrder')}
                         </span>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                         >
-                          View Ticket
+                          {t('viewTicket')}
                         </button>
                       </div>
                     )}
@@ -564,8 +566,8 @@ const Orders = () => {
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80 space-y-1">
             <FiAlertCircle className="w-7 h-7 mx-auto text-slate-300" />
-            <p className="font-bold text-slate-600 text-sm">No matching orders</p>
-            <p className="text-xs text-slate-400">Try switching the status tab or clearing search.</p>
+            <p className="font-bold text-slate-600 text-sm">{t('noOrdersFound')}</p>
+            <p className="text-xs text-slate-400">{t('noOrdersFoundDesc')}</p>
           </div>
         )}
       </div>
@@ -578,14 +580,14 @@ const Orders = () => {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4 font-bold">Order #</th>
-                <th className="py-3.5 px-4 font-bold">Table</th>
-                <th className="py-3.5 px-4 font-bold">Customer</th>
-                <th className="py-3.5 px-4 font-bold">Items Count</th>
-                <th className="py-3.5 px-4 font-bold">Total (USD / KHR)</th>
-                <th className="py-3.5 px-4 font-bold">Time</th>
-                <th className="py-3.5 px-4 font-bold">Status</th>
-                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-bold">{t('orderNumberCol')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('tableCol')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('customerCol')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemsCol')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('totalCol')} (USD / KHR)</th>
+                <th className="py-3.5 px-4 font-bold">{t('timeCol')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('statusCol')}</th>
+                <th className="py-3.5 px-4 font-bold text-right">{t('actionsCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -602,7 +604,7 @@ const Orders = () => {
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="hover:text-orange-600 flex items-center gap-1 cursor-pointer"
-                          title="View order ticket"
+                          title={t('viewTicket')}
                         >
                           <span>#{order.order_number}</span>
                           <FiEye className="w-3 h-3 text-slate-400" />
@@ -611,14 +613,14 @@ const Orders = () => {
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-orange-50 text-orange-700 font-bold text-xs border border-orange-200">
                           <FiMapPin className="w-3 h-3" />
-                          <span>Table {order.table_number || order.table?.table_number || 'N/A'}</span>
+                          <span>{t('table')} {order.table_number || order.table?.table_number || 'N/A'}</span>
                         </span>
                       </td>
                       <td className="py-3 px-4 text-slate-600">
-                        {order.customer_name || <span className="text-slate-400 italic">Guest</span>}
+                        {order.customer_name || <span className="text-slate-400 italic">{t('guestDineIn')}</span>}
                       </td>
                       <td className="py-3 px-4 text-slate-600 font-medium">
-                        {order.items?.length || order.items_count || 1} items
+                        {order.items?.length || order.items_count || 1} {t('items')}
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-black text-slate-900 block">{order.formatted_total}</span>
@@ -632,7 +634,7 @@ const Orders = () => {
                           <StatusBadge status={order.status} />
                           {isBillRequested && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black animate-pulse">
-                              🔔 Bill Requested
+                              🔔 {t('statusBillRequested')}
                             </span>
                           )}
                         </div>
@@ -645,7 +647,7 @@ const Orders = () => {
                             disabled={statusUpdating}
                             className="px-2.5 py-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer"
                           >
-                            Cook
+                            {t('startCooking')}
                           </button>
                         )}
                         {order.status === 'preparing' && (
@@ -654,7 +656,7 @@ const Orders = () => {
                             disabled={statusUpdating}
                             className="px-2.5 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer"
                           >
-                            Ready
+                            {t('markReady')}
                           </button>
                         )}
                         {order.status === 'ready' && (
@@ -663,7 +665,7 @@ const Orders = () => {
                             disabled={statusUpdating}
                             className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer"
                           >
-                            Served
+                            {t('deliverOrder')}
                           </button>
                         )}
                         {order.status === 'served' && (
@@ -672,17 +674,17 @@ const Orders = () => {
                             disabled={statusUpdating}
                             className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer"
                           >
-                            Paid
+                            {t('confirmPaid')}
                           </button>
                         )}
 
                         <button
                           onClick={() => setSelectedOrder(order)}
                           className="p-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold transition-colors inline-flex items-center gap-1 text-[11px] cursor-pointer"
-                          title="View Details"
+                          title={t('viewDetails')}
                         >
                           <FiEye className="w-3.5 h-3.5" />
-                          <span>Details</span>
+                          <span>{t('viewDetails')}</span>
                         </button>
 
                         {/* Dropdown for custom override */}
@@ -692,13 +694,13 @@ const Orders = () => {
                           disabled={statusUpdating}
                           className="py-1 px-2 bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 focus:outline-hidden focus:border-orange-500 cursor-pointer"
                         >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="preparing">Preparing</option>
-                          <option value="ready">Ready</option>
-                          <option value="served">Served</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
+                          <option value="pending">{t('statusPending')}</option>
+                          <option value="confirmed">{t('statusConfirmed')}</option>
+                          <option value="preparing">{t('statusPreparing')}</option>
+                          <option value="ready">{t('statusReady')}</option>
+                          <option value="served">{t('statusServed')}</option>
+                          <option value="completed">{t('statusCompleted')}</option>
+                          <option value="cancelled">{t('statusCancelled')}</option>
                         </select>
                       </td>
                     </tr>
@@ -707,7 +709,7 @@ const Orders = () => {
               ) : (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">
-                    No orders found matching your selected filters.
+                    {t('noOrdersFoundDesc')}
                   </td>
                 </tr>
               )}
@@ -721,7 +723,7 @@ const Orders = () => {
         <Modal
           isOpen={!!selectedOrder}
           onClose={() => setSelectedOrder(null)}
-          title={`Order #${selectedOrder.order_number}`}
+          title={`${t('orderNumberCol')} #${selectedOrder.order_number}`}
           maxWidth="max-w-lg"
         >
           <div className="space-y-4">
@@ -730,7 +732,7 @@ const Orders = () => {
               <div className="flex items-center gap-2">
                 <FiMapPin className="text-orange-600 w-4 h-4" />
                 <span className="font-extrabold text-slate-900 text-sm">
-                  Table {selectedOrder.table_number || selectedOrder.table?.table_number || 'N/A'}
+                  {t('table')} {selectedOrder.table_number || selectedOrder.table?.table_number || 'N/A'}
                 </span>
               </div>
               <StatusBadge status={selectedOrder.status} />
@@ -739,13 +741,13 @@ const Orders = () => {
             {selectedOrder.is_payment_requested && selectedOrder.status !== 'completed' && (
               <div className="p-3 bg-amber-500 text-white rounded-2xl flex items-center justify-between text-xs font-bold shadow-xs">
                 <span className="flex items-center gap-1.5">
-                  🔔 Guest requested bill payment!
+                  🔔 {t('guestCallingBill')}
                 </span>
                 <button
                   onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}
                   className="px-2.5 py-1 bg-white text-emerald-800 rounded-xl font-black text-xs cursor-pointer shadow-xs"
                 >
-                  Confirm Paid
+                  {t('confirmPaid')}
                 </button>
               </div>
             )}
@@ -753,14 +755,14 @@ const Orders = () => {
             {/* Customer & Time Meta */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Customer</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">{t('customerCol')}</p>
                 <p className="font-bold text-slate-800 truncate">
-                  {selectedOrder.customer_name || 'Guest (Dine-in)'}
+                  {selectedOrder.customer_name || t('guestDineIn')}
                 </p>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Order Time</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase">{t('timeCol')}</p>
                 <p className="font-bold text-slate-800">
                   {selectedOrder.formatted_time || 'Recent'} ({selectedOrder.formatted_date || 'Today'})
                 </p>
@@ -772,7 +774,7 @@ const Orders = () => {
               <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl text-xs text-amber-900">
                 <p className="font-bold mb-0.5 flex items-center gap-1.5">
                   <FiFileText className="text-amber-600" />
-                  <span>Customer Note:</span>
+                  <span>{t('customerNote')}:</span>
                 </p>
                 <p className="italic">{selectedOrder.note}</p>
               </div>
@@ -781,7 +783,7 @@ const Orders = () => {
             {/* Items Breakdown */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Ordered Items ({selectedOrder.items?.length || selectedOrder.items_count || 0})
+                {t('items')} ({selectedOrder.items?.length || selectedOrder.items_count || 0})
               </h4>
               <div className="divide-y divide-slate-100 bg-white border border-slate-200 rounded-2xl p-3 max-h-52 overflow-y-auto">
                 {selectedOrder.items?.map((item) => (
@@ -796,7 +798,7 @@ const Orders = () => {
                       </p>
                       {item.note && (
                         <p className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md inline-block mt-1 font-medium">
-                          Note: {item.note}
+                          {t('orderNote')}: {item.note}
                         </p>
                       )}
                     </div>
@@ -811,7 +813,7 @@ const Orders = () => {
             {/* Total Amount (USD & KHR) */}
             <div className="flex justify-between items-center p-3.5 bg-orange-50/70 rounded-2xl border border-orange-200">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Due</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">{t('totalAmount')}</span>
                 <span className="text-xs font-bold text-slate-500">{selectedOrder.formatted_total_khr}</span>
               </div>
               <span className="text-xl font-black text-orange-600">
@@ -822,16 +824,16 @@ const Orders = () => {
             {/* Status Change Buttons Pipeline (Thumb-friendly grid) */}
             <div className="space-y-2 pt-1">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Change Status:
+                {t('changeStatusTo')}:
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {[
-                  { key: 'confirmed', label: 'Confirm', color: 'bg-blue-600' },
-                  { key: 'preparing', label: 'Cooking', color: 'bg-purple-600' },
-                  { key: 'ready', label: 'Ready', color: 'bg-teal-600' },
-                  { key: 'served', label: 'Served', color: 'bg-indigo-600' },
-                  { key: 'completed', label: 'Paid & Done', color: 'bg-emerald-600' },
-                  { key: 'cancelled', label: 'Cancel', color: 'bg-rose-600' },
+                  { key: 'confirmed', label: t('confirm'), color: 'bg-blue-600' },
+                  { key: 'preparing', label: t('startCooking'), color: 'bg-purple-600' },
+                  { key: 'ready', label: t('markReady'), color: 'bg-teal-600' },
+                  { key: 'served', label: t('deliverOrder'), color: 'bg-indigo-600' },
+                  { key: 'completed', label: t('confirmPaid'), color: 'bg-emerald-600' },
+                  { key: 'cancelled', label: t('cancel'), color: 'bg-rose-600' },
                 ].map((action) => (
                   <button
                     key={action.key}

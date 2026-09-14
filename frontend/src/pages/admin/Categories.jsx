@@ -14,8 +14,10 @@ import api from '../../services/api'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Categories = () => {
+  const { t } = useLanguage()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,7 +44,7 @@ const Categories = () => {
       const res = await api.get('/admin/categories')
       setCategories(res.data.data || [])
     } catch {
-      toast.error('Failed to load categories.')
+      toast.error(t('failedLoadCategories'))
     } finally {
       setLoading(false)
     }
@@ -98,18 +100,18 @@ const Categories = () => {
         await api.post(`/admin/categories/${editingCategory.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Category updated successfully!')
+        toast.success(t('categoryUpdatedSuccess'))
       } else {
         await api.post('/admin/categories', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Category created successfully!')
+        toast.success(t('categoryCreatedSuccess'))
       }
 
       setIsModalOpen(false)
       fetchCategories()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save category.'
+      const msg = err.response?.data?.message || t('failedSaveCategory')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -123,9 +125,9 @@ const Categories = () => {
       setCategories((prev) =>
         prev.map((c) => (c.id === cat.id ? { ...c, status: nextStatus } : c))
       )
-      toast.success(`"${cat.name}" is now ${nextStatus ? 'Active' : 'Hidden'}!`)
+      toast.success(`"${cat.name}" -> ${nextStatus ? t('statusActive') : t('statusInactive')}`)
     } catch {
-      toast.error('Failed to change category status.')
+      toast.error(t('failedSaveCategory'))
     }
   }
 
@@ -134,11 +136,11 @@ const Categories = () => {
     setDeleteLoading(true)
     try {
       await api.delete(`/admin/categories/${deletingCategory.id}`)
-      toast.success('Category deleted.')
+      toast.success(t('categoryDeletedSuccess'))
       setDeletingCategory(null)
       fetchCategories()
     } catch {
-      toast.error('Failed to delete category.')
+      toast.error(t('failedSaveCategory'))
     } finally {
       setDeleteLoading(false)
     }
@@ -157,14 +159,14 @@ const Categories = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Menu Categories
+              {t('categoriesTitle')}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
               {categories.length}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Organize dishes into sections like Food, Drinks, Coffee, and Desserts.
+            {t('categoriesSubtitle')}
           </p>
         </div>
 
@@ -173,7 +175,7 @@ const Categories = () => {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
           <FiPlus className="w-4 h-4 stroke-[3]" />
-          <span>Add New Category</span>
+          <span>{t('addCategoryModal')}</span>
         </button>
       </div>
 
@@ -186,7 +188,7 @@ const Categories = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search categories..."
+          placeholder={t('search')}
           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
         />
         {searchQuery && (
@@ -237,12 +239,12 @@ const Categories = () => {
                   </div>
 
                   <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                    {cat.description || 'No description added'}
+                    {cat.description || '—'}
                   </p>
 
                   <div className="flex items-center gap-2 mt-2">
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
-                      {cat.menu_items_count || 0} dishes
+                      {cat.menu_items_count || 0} {t('items')}
                     </span>
 
                     <button
@@ -254,7 +256,7 @@ const Categories = () => {
                           : 'bg-slate-100 text-slate-500 border border-slate-200'
                       }`}
                     >
-                      {cat.status ? '🟢 Active' : '⚪ Hidden'}
+                      {cat.status ? `🟢 ${t('statusActive')}` : `⚪ ${t('statusInactive')}`}
                     </button>
                   </div>
                 </div>
@@ -267,12 +269,12 @@ const Categories = () => {
                   className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
                 >
                   <FiEdit2 className="w-3.5 h-3.5" />
-                  <span>Edit Category</span>
+                  <span>{t('editCategoryModal')}</span>
                 </button>
                 <button
                   onClick={() => setDeletingCategory(cat)}
                   className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95"
-                  title="Delete"
+                  title={t('delete')}
                 >
                   <FiTrash2 className="w-3.5 h-3.5" />
                 </button>
@@ -282,7 +284,7 @@ const Categories = () => {
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
             <FiLayers className="w-6 h-6 mx-auto text-slate-300 mb-1" />
-            <p className="font-bold text-slate-600 text-sm">No categories found</p>
+            <p className="font-bold text-slate-600 text-sm">{t('noOrdersFound')}</p>
           </div>
         )}
       </div>
@@ -295,13 +297,13 @@ const Categories = () => {
           <table className="w-full text-left text-xs min-w-[650px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4 font-bold">Sort</th>
-                <th className="py-3.5 px-4 font-bold">Image</th>
-                <th className="py-3.5 px-4 font-bold">Category Name</th>
-                <th className="py-3.5 px-4 font-bold">Description</th>
-                <th className="py-3.5 px-4 font-bold">Items Count</th>
-                <th className="py-3.5 px-4 font-bold text-center">Status</th>
-                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-bold">{t('categoryOrderLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('categoryImageLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('categoryNameLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('categoryDescriptionLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemsCol')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('statusCol')}</th>
+                <th className="py-3.5 px-4 font-bold text-right">{t('actionsCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -327,11 +329,11 @@ const Categories = () => {
                     </td>
                     <td className="py-3 px-4 font-extrabold text-slate-900">{cat.name}</td>
                     <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
-                      {cat.description || <span className="text-slate-400 italic">No description</span>}
+                      {cat.description || <span className="text-slate-400 italic">—</span>}
                     </td>
                     <td className="py-3 px-4">
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-bold text-slate-700">
-                        {cat.menu_items_count || 0} items
+                        {cat.menu_items_count || 0} {t('items')}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -343,17 +345,17 @@ const Categories = () => {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                         }`}
-                        title="Click to toggle status"
+                        title={t('changeStatusTo')}
                       >
                         {cat.status ? (
                           <>
                             <FiCheckCircle className="w-3 h-3 text-emerald-600" />
-                            <span>Active</span>
+                            <span>{t('statusActive')}</span>
                           </>
                         ) : (
                           <>
                             <FiXCircle className="w-3 h-3 text-slate-400" />
-                            <span>Hidden</span>
+                            <span>{t('statusInactive')}</span>
                           </>
                         )}
                       </button>
@@ -362,14 +364,14 @@ const Categories = () => {
                       <button
                         onClick={() => handleOpenModal(cat)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
-                        title="Edit Category"
+                        title={t('editCategoryModal')}
                       >
                         <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingCategory(cat)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Delete Category"
+                        title={t('delete')}
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
                       </button>
@@ -379,7 +381,7 @@ const Categories = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    No categories found.
+                    {t('noOrdersFoundDesc')}
                   </td>
                 </tr>
               )}
@@ -392,31 +394,31 @@ const Categories = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? 'Edit Category' : 'Create Category'}
+        title={editingCategory ? t('editCategoryModal') : t('addCategoryModal')}
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Category Name *
+              {t('categoryNameLabel')} *
             </label>
             <input
               type="text"
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Food, Drinks, Desserts, Coffee..."
+              placeholder={t('categoryNameInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Description (Optional)
+              {t('categoryDescriptionLabel')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Short description for the menu section..."
+              placeholder={t('categoryDescriptionInputPlaceholder')}
               rows={2}
               className="w-full p-3 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
@@ -425,7 +427,7 @@ const Categories = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Sort Order
+                {t('categoryOrderLabel')}
               </label>
               <input
                 type="number"
@@ -439,22 +441,22 @@ const Categories = () => {
 
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Display Status
+                {t('categoryStatusLabel')}
               </label>
               <select
                 value={formData.status ? '1' : '0'}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value === '1' })}
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
               >
-                <option value="1">Active (Visible)</option>
-                <option value="0">Hidden</option>
+                <option value="1">{t('statusActive')}</option>
+                <option value="0">{t('statusInactive')}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Upload Image File
+              {t('categoryImageLabel')}
             </label>
             <input
               type="file"
@@ -466,7 +468,7 @@ const Categories = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Or Image URL
+              {t('categoryImageLabel')} (URL)
             </label>
             <input
               type="url"
@@ -483,14 +485,14 @@ const Categories = () => {
               onClick={() => setIsModalOpen(false)}
               className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Category'}
+              {submitting ? t('saving') : editingCategory ? t('save') : t('addCategoryModal')}
             </button>
           </div>
         </form>
@@ -502,8 +504,8 @@ const Categories = () => {
         onClose={() => setDeletingCategory(null)}
         onConfirm={handleDelete}
         loading={deleteLoading}
-        title={`Delete "${deletingCategory?.name}"?`}
-        message="Deleting this category will also affect dishes belonging to it. Are you sure you wish to proceed?"
+        title={`${t('delete')} "${deletingCategory?.name}"?`}
+        message={t('confirmDeleteCategory')}
       />
     </div>
   )

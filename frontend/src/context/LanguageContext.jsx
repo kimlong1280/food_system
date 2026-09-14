@@ -5,12 +5,13 @@ const LanguageContext = createContext(null)
 
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState(() => {
-    return localStorage.getItem('customer_language') || 'en'
+    return localStorage.getItem('app_language') || localStorage.getItem('customer_language') || 'en'
   })
 
   const setLanguage = useCallback((lang) => {
     const validLang = lang === 'km' ? 'km' : 'en'
     setLanguageState(validLang)
+    localStorage.setItem('app_language', validLang)
     localStorage.setItem('customer_language', validLang)
     document.documentElement.lang = validLang
   }, [])

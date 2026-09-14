@@ -12,19 +12,22 @@ import {
   FiExternalLink,
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
+import AdminLanguageSwitch from './AdminLanguageSwitch'
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const navItems = [
-    { to: '/admin/dashboard', label: 'Dashboard', icon: <FiGrid /> },
-    { to: '/admin/orders', label: 'Live Orders', icon: <FiShoppingBag /> },
-    { to: '/admin/categories', label: 'Categories', icon: <FiLayers /> },
-    { to: '/admin/menu-items', label: 'Menu Items', icon: <FiCoffee /> },
-    { to: '/admin/tables', label: 'Tables & QR', icon: <FiMapPin /> },
-    { to: '/admin/posters', label: 'Banners & Posters', icon: <FiImage /> },
-    { to: '/admin/users', label: 'Staff Accounts', icon: <FiUsers /> },
+    { to: '/admin/dashboard', label: t('navDashboard'), icon: <FiGrid /> },
+    { to: '/admin/orders', label: t('navOrders'), icon: <FiShoppingBag /> },
+    { to: '/admin/categories', label: t('navCategories'), icon: <FiLayers /> },
+    { to: '/admin/menu-items', label: t('navMenuItems'), icon: <FiCoffee /> },
+    { to: '/admin/tables', label: t('navTables'), icon: <FiMapPin /> },
+    { to: '/admin/posters', label: t('navPosters'), icon: <FiImage /> },
+    { to: '/admin/users', label: t('navUsers'), icon: <FiUsers /> },
   ]
 
   const handleLogout = async () => {
@@ -56,9 +59,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="font-extrabold text-sm tracking-tight text-white">
-                Admin Portal
+                {t('adminPortal')}
               </h2>
-              <p className="text-[11px] text-orange-400 font-semibold">Restaurant Hub</p>
+              <p className="text-[11px] text-orange-400 font-semibold">{t('restaurantHub')}</p>
             </div>
           </div>
 
@@ -100,7 +103,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             >
               <div className="flex items-center gap-3">
                 <FiExternalLink className="text-base" />
-                <span>Customer Menu</span>
+                <span>{t('navCustomerMenu')}</span>
               </div>
               <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">
                 Live
@@ -109,17 +112,19 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
         </nav>
 
-        {/* User Profile & Logout Bottom Section */}
-        <div className="p-3.5 border-t border-slate-800/80 bg-slate-950/40">
+        {/* Language Switch & User Profile Bottom Section */}
+        <div className="p-3.5 border-t border-slate-800/80 bg-slate-950/40 space-y-2.5">
+          <AdminLanguageSwitch variant="sidebar" />
+
           <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/50">
             <div className="min-w-0 flex-1 mr-2">
-              <p className="text-xs font-bold text-white truncate">{user?.name || 'Admin User'}</p>
+              <p className="text-xs font-bold text-white truncate">{user?.name || t('adminUser')}</p>
               <p className="text-[10px] text-slate-400 truncate">{user?.email || 'admin@restaurant.com'}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors shrink-0"
-              title="Logout"
+              className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors shrink-0 cursor-pointer"
+              title={t('logout')}
             >
               <FiLogOut className="w-4 h-4" />
             </button>

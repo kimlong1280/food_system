@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { FiLock, FiMail, FiArrowRight, FiEye, FiEyeOff } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { Spinner } from '../../components/Loading'
+import AdminLanguageSwitch from '../../components/admin/AdminLanguageSwitch'
 
 const Login = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useLanguage()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,13 +23,13 @@ const Login = () => {
 
     try {
       await login(email, password)
-      toast.success('Welcome back, Administrator!')
+      toast.success(t('welcomeBackAdmin'))
       navigate('/admin/dashboard')
     } catch (err) {
       const msg =
         err.response?.data?.message ||
         err.response?.data?.errors?.email?.[0] ||
-        'Invalid login credentials.'
+        t('invalidCredentials')
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -39,15 +42,20 @@ const Login = () => {
       <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-orange-600/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-amber-600/15 blur-3xl pointer-events-none" />
 
+      {/* Top Floating Language Switcher */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <AdminLanguageSwitch variant="header" />
+      </div>
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 px-2 sm:px-4">
         <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-orange-500 to-amber-400 mx-auto flex items-center justify-center text-white text-2xl shadow-xl shadow-orange-500/25 mb-4">
           <i className="fi fi-sr-coffee" />
         </div>
         <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-          Restaurant Admin Portal
+          {t('loginTitle')}
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          Sign in with administrator credentials to manage your restaurant
+          {t('loginSubtitle')}
         </p>
       </div>
 
@@ -56,7 +64,7 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Email Address
+                {t('emailAddress')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -67,7 +75,7 @@ const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder={t('enterEmail')}
                   autoComplete="email"
                   className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
@@ -76,7 +84,7 @@ const Login = () => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Password
+                {t('password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -87,7 +95,7 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t('enterPassword')}
                   autoComplete="current-password"
                   className="w-full pl-10 pr-10 py-3 sm:py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-white text-sm placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
                 />
@@ -111,11 +119,11 @@ const Login = () => {
                 {loading ? (
                   <>
                     <Spinner size="sm" className="border-white border-t-transparent" />
-                    <span>Signing in...</span>
+                    <span>{t('signingIn')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign In to Dashboard</span>
+                    <span>{t('signInDashboard')}</span>
                     <FiArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -128,7 +136,7 @@ const Login = () => {
               href="/menu"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-orange-400 transition-colors"
             >
-              <span>← Go to Customer Menu</span>
+              <span>← {t('backToCustomerMenu')}</span>
             </a>
           </div>
         </div>

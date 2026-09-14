@@ -85,3 +85,31 @@ Vercel will build and launch your website with a free SSL certificate (e.g., `ht
 4. Render will auto-redeploy to apply the updated CORS origin.
 
 Your website is now 100% online and accessible worldwide on smartphones, tablets, and computers!
+
+---
+
+## Alternative: Self-Hosted Production with Docker Compose
+
+If deploying on a VPS (DigitalOcean, AWS EC2, Linode, or local server):
+
+1. Clone the repository on your server:
+```bash
+git clone https://github.com/kimlong1280/food_system.git
+cd food_system
+```
+
+2. Start the entire full-stack system with a single command:
+```bash
+docker compose up -d --build
+```
+
+This launches:
+- **PostgreSQL 16 Alpine** on port `5432` with persistent data volume
+- **Laravel 12 Production Backend** on port `8000` (OPcache + Nginx Gzip)
+- **React Frontend SPA** on port `3000` (Nginx static bundle)
+
+3. Check container status:
+```bash
+docker compose ps
+```
+

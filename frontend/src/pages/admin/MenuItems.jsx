@@ -16,8 +16,10 @@ import api from '../../services/api'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const MenuItems = () => {
+  const { t } = useLanguage()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +58,7 @@ const MenuItems = () => {
       setItems(itemsRes.data.data || [])
       setCategories(catRes.data.data || [])
     } catch {
-      toast.error('Failed to load menu items.')
+      toast.error(t('failedLoadMenuItems'))
     } finally {
       setLoading(false)
     }
@@ -147,18 +149,18 @@ const MenuItems = () => {
         await api.post(`/admin/menu-items/${editingItem.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Dish updated successfully!')
+        toast.success(t('menuItemUpdatedSuccess'))
       } else {
         await api.post('/admin/menu-items', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Dish created successfully!')
+        toast.success(t('menuItemCreatedSuccess'))
       }
 
       setIsModalOpen(false)
       fetchData()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save menu item.'
+      const msg = err.response?.data?.message || t('failedSaveMenuItem')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -173,10 +175,10 @@ const MenuItems = () => {
         prev.map((i) => (i.id === item.id ? { ...i, is_available: res.data.is_available } : i))
       )
       toast.success(
-        `"${item.name}" is now ${res.data.is_available ? 'Available' : 'Unavailable (Sold Out)'}!`
+        `"${item.name}" -> ${res.data.is_available ? t('inStock') : t('soldOut')}`
       )
     } catch {
-      toast.error('Failed to toggle availability.')
+      toast.error(t('failedSaveMenuItem'))
     }
   }
 
@@ -188,10 +190,10 @@ const MenuItems = () => {
         prev.map((i) => (i.id === item.id ? { ...i, is_featured: res.data.is_featured } : i))
       )
       toast.success(
-        `"${item.name}" ${res.data.is_featured ? 'marked as Featured' : 'unmarked from Featured'}!`
+        `"${item.name}" -> ${res.data.is_featured ? t('featured') : t('standard')}`
       )
     } catch {
-      toast.error('Failed to toggle featured status.')
+      toast.error(t('failedSaveMenuItem'))
     }
   }
 
@@ -200,11 +202,11 @@ const MenuItems = () => {
     setDeleteLoading(true)
     try {
       await api.delete(`/admin/menu-items/${deletingItem.id}`)
-      toast.success('Dish deleted.')
+      toast.success(t('menuItemDeletedSuccess'))
       setDeletingItem(null)
       fetchData()
     } catch {
-      toast.error('Failed to delete dish.')
+      toast.error(t('failedSaveMenuItem'))
     } finally {
       setDeleteLoading(false)
     }
@@ -223,7 +225,7 @@ const MenuItems = () => {
   const inStockCount = items.filter((i) => i.is_available).length
   const soldOutCount = items.filter((i) => !i.is_available).length
 
-  if (loading) return <PageLoading text="Loading menu items..." />
+  if (loading) return <PageLoading text={t('loadingDishes')} />
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -231,15 +233,15 @@ const MenuItems = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Menu Items</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{t('menuItemsTitle')}</h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
-              {filteredItems.length} dishes
+              {filteredItems.length} {t('items')}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-            <span>In stock: <strong className="text-emerald-600">{inStockCount}</strong></span>
+            <span>{t('inStock')}: <strong className="text-emerald-600">{inStockCount}</strong></span>
             <span>•</span>
-            <span>Sold out: <strong className="text-rose-600">{soldOutCount}</strong></span>
+            <span>{t('soldOut')}: <strong className="text-rose-600">{soldOutCount}</strong></span>
           </div>
         </div>
 
@@ -248,7 +250,7 @@ const MenuItems = () => {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
           <FiPlus className="w-4 h-4 stroke-[3]" />
-          <span>Add New Dish</span>
+          <span>{t('addNewDish')}</span>
         </button>
       </div>
 
@@ -263,7 +265,7 @@ const MenuItems = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search dishes by name or description..."
+              placeholder={t('searchMenuItemsPlaceholder')}
               className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
             {searchQuery && (
@@ -282,7 +284,7 @@ const MenuItems = () => {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs cursor-pointer"
             >
-              <option value="">All Categories ({categories.length})</option>
+              <option value="">{t('allCategoriesOption')} ({categories.length})</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -297,11 +299,11 @@ const MenuItems = () => {
               onChange={(e) => setSelectedType(e.target.value)}
               className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-hidden focus:border-orange-500 shadow-2xs cursor-pointer"
             >
-              <option value="">All Types</option>
-              <option value="food">Food</option>
-              <option value="drink">Drinks</option>
-              <option value="dessert">Desserts</option>
-              <option value="other">Other</option>
+              <option value="">{t('allTypesOption')}</option>
+              <option value="food">{t('itemFoodType')}</option>
+              <option value="drink">{t('itemDrinkType')}</option>
+              <option value="dessert">{t('itemDessertType')}</option>
+              <option value="other">{t('otherType')}</option>
             </select>
           </div>
         </div>
@@ -316,7 +318,7 @@ const MenuItems = () => {
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
             }`}
           >
-            All Items
+            {t('allCategoriesOption')}
           </button>
           {categories.map((c) => (
             <button
@@ -404,12 +406,12 @@ const MenuItems = () => {
                   {item.is_available ? (
                     <>
                       <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>In Stock</span>
+                      <span>{t('inStock')}</span>
                     </>
                   ) : (
                     <>
                       <FiXCircle className="w-3.5 h-3.5 text-rose-600" />
-                      <span>Sold Out</span>
+                      <span>{t('soldOut')}</span>
                     </>
                   )}
                 </button>
@@ -425,7 +427,7 @@ const MenuItems = () => {
                   }`}
                 >
                   <FiStar className={`w-3.5 h-3.5 ${item.is_featured ? 'fill-amber-400 text-amber-500' : ''}`} />
-                  <span>{item.is_featured ? 'Featured' : 'Standard'}</span>
+                  <span>{item.is_featured ? t('featured') : t('standard')}</span>
                 </button>
               </div>
 
@@ -436,12 +438,12 @@ const MenuItems = () => {
                   className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
                 >
                   <FiEdit2 className="w-3.5 h-3.5" />
-                  <span>Edit Dish</span>
+                  <span>{t('editDish')}</span>
                 </button>
                 <button
                   onClick={() => setDeletingItem(item)}
                   className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95"
-                  title="Delete"
+                  title={t('delete')}
                 >
                   <FiTrash2 className="w-3.5 h-3.5" />
                 </button>
@@ -451,7 +453,7 @@ const MenuItems = () => {
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
             <FiCoffee className="w-6 h-6 mx-auto text-slate-300 mb-1" />
-            <p className="font-bold text-slate-600 text-sm">No dishes found</p>
+            <p className="font-bold text-slate-600 text-sm">{t('noOrdersFound')}</p>
           </div>
         )}
       </div>
@@ -464,14 +466,14 @@ const MenuItems = () => {
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4 font-bold">Image</th>
-                <th className="py-3.5 px-4 font-bold">Dish Name</th>
-                <th className="py-3.5 px-4 font-bold">Category</th>
-                <th className="py-3.5 px-4 font-bold">Price (USD / KHR)</th>
-                <th className="py-3.5 px-4 font-bold">Type</th>
-                <th className="py-3.5 px-4 font-bold text-center">Featured</th>
-                <th className="py-3.5 px-4 font-bold text-center">Available</th>
-                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemImageLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemNameLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemCategoryLabel')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemPriceLabel')} (USD / KHR)</th>
+                <th className="py-3.5 px-4 font-bold">{t('itemTypeLabel')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('featured')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('itemAvailableLabel')}</th>
+                <th className="py-3.5 px-4 font-bold text-right">{t('actionsCol')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -497,7 +499,7 @@ const MenuItems = () => {
                     <td className="py-3 px-4">
                       <p className="font-extrabold text-slate-900">{item.name}</p>
                       <p className="text-[11px] text-slate-400 max-w-xs truncate mt-0.5">
-                        {item.description || 'No description'}
+                        {item.description || '—'}
                       </p>
                     </td>
                     <td className="py-3 px-4">
@@ -527,7 +529,7 @@ const MenuItems = () => {
                             ? 'text-amber-500 bg-amber-50 hover:bg-amber-100 border border-amber-200'
                             : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'
                         }`}
-                        title="Toggle Popular/Featured"
+                        title={t('featured')}
                       >
                         <FiStar className={`w-4 h-4 ${item.is_featured ? 'fill-current' : ''}`} />
                       </button>
@@ -543,17 +545,17 @@ const MenuItems = () => {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                         }`}
-                        title="Click to toggle availability"
+                        title={t('itemAvailableLabel')}
                       >
                         {item.is_available ? (
                           <>
                             <FiCheckCircle className="w-3 h-3 text-emerald-600" />
-                            <span>In Stock</span>
+                            <span>{t('inStock')}</span>
                           </>
                         ) : (
                           <>
                             <FiXCircle className="w-3 h-3 text-rose-600" />
-                            <span>Sold Out</span>
+                            <span>{t('soldOut')}</span>
                           </>
                         )}
                       </button>
@@ -563,14 +565,14 @@ const MenuItems = () => {
                       <button
                         onClick={() => handleOpenModal(item)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
-                        title="Edit Dish"
+                        title={t('editDish')}
                       >
                         <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingItem(item)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Delete Dish"
+                        title={t('delete')}
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
                       </button>
@@ -580,7 +582,7 @@ const MenuItems = () => {
               ) : (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">
-                    No dishes found matching your filters.
+                    {t('noOrdersFoundDesc')}
                   </td>
                 </tr>
               )}
@@ -593,19 +595,19 @@ const MenuItems = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Edit Dish' : 'Create New Dish'}
+        title={editingItem ? t('editMenuItemModal') : t('addMenuItemModal')}
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Dish Name *
+              {t('itemNameLabel')} *
             </label>
             <input
               type="text"
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Crispy Chicken Burger"
+              placeholder={t('itemNameInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
@@ -613,7 +615,7 @@ const MenuItems = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Category *
+                {t('itemCategoryLabel')} *
               </label>
               <select
                 required
@@ -631,17 +633,17 @@ const MenuItems = () => {
 
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Type *
+                {t('itemTypeLabel')} *
               </label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
               >
-                <option value="food">Food</option>
-                <option value="drink">Drink</option>
-                <option value="dessert">Dessert</option>
-                <option value="other">Other</option>
+                <option value="food">{t('itemFoodType')}</option>
+                <option value="drink">{t('itemDrinkType')}</option>
+                <option value="dessert">{t('itemDessertType')}</option>
+                <option value="other">{t('otherType')}</option>
               </select>
             </div>
           </div>
@@ -649,7 +651,7 @@ const MenuItems = () => {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                {priceCurrency === 'USD' ? 'Price ($ USD) *' : 'Price (៛ KHR / រៀល) *'}
+                {priceCurrency === 'USD' ? `${t('itemPriceLabel')} *` : `${t('itemPriceLabel')} (KHR ៛) *`}
               </label>
 
               {/* Currency Selector Toggle */}
@@ -717,7 +719,7 @@ const MenuItems = () => {
             {/* Quick KHR Presets */}
             {priceCurrency === 'KHR' && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-                <span className="text-[10px] text-slate-400 font-semibold mr-0.5">រហ័ស (Quick):</span>
+                <span className="text-[10px] text-slate-400 font-semibold mr-0.5">{t('quickKhr')}:</span>
                 {[4000, 6000, 8000, 10000, 12000, 15000, 20000].map((amt) => (
                   <button
                     key={amt}
@@ -740,7 +742,7 @@ const MenuItems = () => {
               <span className="font-medium">
                 {priceCurrency === 'USD' ? (
                   <>
-                    សមមូលជារៀល:{' '}
+                    {t('equivalentKhr')}{' '}
                     <strong className="font-extrabold text-orange-900">
                       {formData.price && !isNaN(formData.price)
                         ? `${Math.round(Number(formData.price) * KHR_RATE).toLocaleString()} ៛`
@@ -749,7 +751,7 @@ const MenuItems = () => {
                   </>
                 ) : (
                   <>
-                    សមមូលជាដុល្លារ:{' '}
+                    {t('equivalentUsd')}{' '}
                     <strong className="font-extrabold text-orange-900">
                       {khrPrice && !isNaN(khrPrice)
                         ? `$${(Number(khrPrice) / KHR_RATE).toFixed(2)} USD`
@@ -758,18 +760,18 @@ const MenuItems = () => {
                   </>
                 )}
               </span>
-              <span className="text-[10px] text-orange-600/80 font-bold">(អត្រា $1 = 4,000 ៛)</span>
+              <span className="text-[10px] text-orange-600/80 font-bold">{t('exchangeRateNote')}</span>
             </div>
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Description
+              {t('itemDescriptionLabel')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Appetizing description of ingredients and flavors..."
+              placeholder={t('itemDescriptionInputPlaceholder')}
               rows={2}
               className="w-full p-3 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
@@ -777,7 +779,7 @@ const MenuItems = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Dish Image Upload
+              {t('itemImageLabel')}
             </label>
             <input
               type="file"
@@ -789,7 +791,7 @@ const MenuItems = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Or Image Web URL
+              {t('itemImageLabel')} (URL)
             </label>
             <input
               type="url"
@@ -808,7 +810,7 @@ const MenuItems = () => {
                 onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
                 className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4 cursor-pointer"
               />
-              <span className="font-bold text-slate-800">In Stock</span>
+              <span className="font-bold text-slate-800">{t('inStock')}</span>
             </label>
 
             <label className="flex items-center gap-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 cursor-pointer shadow-2xs">
@@ -818,7 +820,7 @@ const MenuItems = () => {
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
                 className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4 cursor-pointer"
               />
-              <span className="font-bold text-slate-800">Featured</span>
+              <span className="font-bold text-slate-800">{t('featured')}</span>
             </label>
           </div>
 
@@ -828,14 +830,14 @@ const MenuItems = () => {
               onClick={() => setIsModalOpen(false)}
               className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Saving...' : editingItem ? 'Save Changes' : 'Create Dish'}
+              {submitting ? t('saving') : editingItem ? t('save') : t('addMenuItemModal')}
             </button>
           </div>
         </form>
@@ -847,8 +849,8 @@ const MenuItems = () => {
         onClose={() => setDeletingItem(null)}
         onConfirm={handleDelete}
         loading={deleteLoading}
-        title={`Delete "${deletingItem?.name}"?`}
-        message="Are you sure you want to delete this menu item? Past order history will remain preserved."
+        title={`${t('delete')} "${deletingItem?.name}"?`}
+        message={t('confirmDeleteMenuItem')}
       />
     </div>
   )

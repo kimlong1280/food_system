@@ -2,8 +2,10 @@ import { useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { FiDownload, FiPrinter, FiCopy } from 'react-icons/fi'
 import toast from 'react-hot-toast'
+import { useLanguage } from '../../context/LanguageContext'
 
 const QRCodeCard = ({ table }) => {
+  const { t } = useLanguage()
   const qrRef = useRef(null)
 
   const frontendUrl = window.location.origin
@@ -22,7 +24,7 @@ const QRCodeCard = ({ table }) => {
     link.click()
     document.body.removeChild(link)
 
-    toast.success(`Downloaded QR Code for Table ${table.table_number}!`)
+    toast.success(`${t('downloadQrCode')} — ${t('tableNumber', { number: table.table_number })}`)
   }
 
   // Print table standee
@@ -99,7 +101,7 @@ const QRCodeCard = ({ table }) => {
             <h1 class="title">Table ${table.table_number}</h1>
             <p class="subtitle">${table.name || 'Dine-In Area'}</p>
             <img src="${imageUri}" width="220" height="220" />
-            <div class="instructions"><i class="fi fi-sr-smartphone" style="vertical-align:middle;margin-right:6px"></i>Scan with phone camera to order</div>
+            <div class="instructions"><i class="fi fi-sr-smartphone" style="vertical-align:middle;margin-right:6px"></i>${t('scanToOrderInstructions')}</div>
           </div>
           <script>
             window.onload = () => { window.print(); window.close(); }
@@ -112,27 +114,27 @@ const QRCodeCard = ({ table }) => {
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(tableUrl)
-    toast.success('Table menu URL copied to clipboard!')
+    toast.success(t('tableUrlCopied'))
   }
 
   return (
     <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex flex-col items-center text-center space-y-4">
       <div className="flex items-center justify-between w-full">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-          QR Standee
+          {t('tableStandee')}
         </span>
         <span
           className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
             table.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
-          {table.status}
+          {table.status === 'active' ? t('statusActive') : t('statusInactive')}
         </span>
       </div>
 
       <div>
-        <h3 className="text-lg font-black text-slate-900">Table {table.table_number}</h3>
-        <p className="text-xs text-slate-500">{table.name || 'Restaurant Table'}</p>
+        <h3 className="text-lg font-black text-slate-900">{t('tableNumber', { number: table.table_number })}</h3>
+        <p className="text-xs text-slate-500">{table.name || t('dineInArea')}</p>
       </div>
 
       {/* QR Canvas */}
@@ -158,31 +160,31 @@ const QRCodeCard = ({ table }) => {
         <button
           type="button"
           onClick={handleDownload}
-          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 text-xs font-semibold transition-all active:scale-95"
-          title="Download PNG"
+          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+          title={t('downloadQrCode')}
         >
           <FiDownload className="w-4 h-4" />
-          <span className="text-[10px]">Download</span>
+          <span className="text-[10px] font-bold truncate w-full px-1">{t('downloadQrCode').split(' ')[0]}</span>
         </button>
 
         <button
           type="button"
           onClick={handlePrint}
-          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-xs text-xs font-semibold transition-all active:scale-95"
-          title="Print QR Standee"
+          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-xs text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+          title={t('printStandee')}
         >
           <FiPrinter className="w-4 h-4" />
-          <span className="text-[10px]">Print</span>
+          <span className="text-[10px] font-bold truncate w-full px-1">{t('printStandee').split(' ')[0]}</span>
         </button>
 
         <button
           type="button"
           onClick={handleCopyUrl}
-          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 text-xs font-semibold transition-all active:scale-95"
-          title="Copy URL"
+          className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 border border-slate-200 hover:border-orange-200 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+          title={t('copyTableLink')}
         >
           <FiCopy className="w-4 h-4" />
-          <span className="text-[10px]">Copy Link</span>
+          <span className="text-[10px] font-bold truncate w-full px-1">{t('copyTableLink').split(' ')[0]}</span>
         </button>
       </div>
     </div>

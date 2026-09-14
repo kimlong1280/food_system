@@ -18,4 +18,29 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-router-dom') || id.includes('react-dom') || id.includes('/react/')) {
+              return 'vendor-react'
+            }
+            if (id.includes('react-icons')) {
+              return 'vendor-icons'
+            }
+            if (
+              id.includes('axios') ||
+              id.includes('qrcode') ||
+              id.includes('canvas-confetti') ||
+              id.includes('react-hot-toast')
+            ) {
+              return 'vendor-utils'
+            }
+          }
+        },
+      },
+    },
+  },
 })

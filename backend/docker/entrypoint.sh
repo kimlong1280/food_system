@@ -138,10 +138,12 @@ if [ "$DB_CONNECTION" = "pgsql" ] || [ -n "$DB_HOST" ]; then
     fi
 fi
 
-# Cache configuration and routes for production performance
-echo "Caching configuration..."
+# Cache configuration, routes, views, and events for production performance
+echo "Caching configuration, routes, and views..."
 php artisan config:cache || echo "Warning: config cache failed, continuing..."
 php artisan route:cache || echo "Warning: route cache failed, continuing..."
+php artisan view:cache || echo "Warning: view cache failed, continuing..."
+php artisan event:cache || echo "Warning: event cache failed, continuing..."
 
 # Run database migrations and seeding
 echo "Running database migrations and seeding..."

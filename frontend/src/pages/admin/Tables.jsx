@@ -18,8 +18,10 @@ import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import QRCodeCard from '../../components/admin/QRCodeCard'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Tables = () => {
+  const { t } = useLanguage()
   const [tables, setTables] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,7 +52,7 @@ const Tables = () => {
       const res = await api.get('/admin/tables')
       setTables(res.data.data || [])
     } catch {
-      toast.error('Failed to load tables.')
+      toast.error(t('failedLoadTables'))
     } finally {
       setLoading(false)
     }
@@ -89,16 +91,16 @@ const Tables = () => {
     try {
       if (editingTable) {
         await api.put(`/admin/tables/${editingTable.id}`, formData)
-        toast.success('Table updated successfully!')
+        toast.success(t('tableUpdatedSuccess'))
       } else {
         await api.post('/admin/tables', formData)
-        toast.success('Table created successfully!')
+        toast.success(t('tableCreatedSuccess'))
       }
 
       setIsModalOpen(false)
       fetchTables()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save table.'
+      const msg = err.response?.data?.message || t('failedSaveTable')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -115,7 +117,7 @@ const Tables = () => {
       )
       toast.success(res.data.message)
     } catch {
-      toast.error('Failed to toggle active status.')
+      toast.error(t('failedUpdateStatus'))
     } finally {
       setTogglingStatusId(null)
     }
@@ -132,7 +134,7 @@ const Tables = () => {
       )
       toast.success(res.data.message)
     } catch {
-      toast.error('Failed to update table customer occupancy.')
+      toast.error(t('failedUpdateStatus'))
     } finally {
       setTogglingOccupancyId(null)
     }
@@ -143,13 +145,13 @@ const Tables = () => {
     setDeleteLoading(true)
     try {
       await api.delete(`/admin/tables/${deletingTable.id}`)
-      toast.success('Table deleted.')
+      toast.success(t('tableDeletedSuccess'))
       setDeletingTable(null)
       fetchTables()
     } catch (err) {
       const msg =
         err.response?.data?.message ||
-        'Cannot delete table with active or past orders. Please deactivate it instead.'
+        t('cannotDeleteTableMsg')
       toast.error(msg)
     } finally {
       setDeleteLoading(false)
@@ -176,7 +178,7 @@ const Tables = () => {
     return matchesQuery && matchesOccupancy
   })
 
-  if (loading) return <PageLoading text="Loading tables & QR codes..." />
+  if (loading) return <PageLoading text={t('loadingTablesAndQr')} />
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -185,21 +187,21 @@ const Tables = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Tables & Seating
+              {t('tablesTitle')}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
-              {tables.length} tables
+              {t('totalTablesCount', { count: tables.length })}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
             <span className="inline-flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-              👥 Seated: <strong className="font-black text-amber-900">{occupiedTablesCount}</strong>
+              👥 {t('seatedCount', { count: occupiedTablesCount })}
             </span>
             <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              🪑 Free: <strong className="font-black text-emerald-900">{availableTablesCount}</strong>
+              🪑 {t('freeCount', { count: availableTablesCount })}
             </span>
             <span className="text-slate-400">•</span>
-            <span>Active: <strong className="text-slate-700">{activeTablesCount}</strong></span>
+            <span>{t('activeCount', { count: activeTablesCount })}</span>
           </div>
         </div>
 
@@ -208,7 +210,7 @@ const Tables = () => {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
           <FiPlus className="w-4 h-4 stroke-[3]" />
-          <span>Add New Table</span>
+          <span>{t('addNewTable')}</span>
         </button>
       </div>
 
@@ -225,7 +227,7 @@ const Tables = () => {
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            All Tables ({tables.length})
+            {t('allTablesWithCount', { count: tables.length })}
           </button>
           <button
             type="button"
@@ -236,7 +238,7 @@ const Tables = () => {
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            <span>👥 Customer In</span>
+            <span>{t('customerInFilter')}</span>
             <span
               className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
                 occupancyFilter === 'occupied'
@@ -256,7 +258,7 @@ const Tables = () => {
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
-            <span>🪑 Available</span>
+            <span>{t('availableFilter')}</span>
             <span
               className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
                 occupancyFilter === 'available'
@@ -278,7 +280,7 @@ const Tables = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search table # or area..."
+            placeholder={t('searchTablePlaceholder')}
             className="w-full pl-10 pr-9 py-2 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
           />
           {searchQuery && (
@@ -313,10 +315,10 @@ const Tables = () => {
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-orange-600 text-white font-black text-xs shadow-2xs">
                     <FiMapPin className="w-3.5 h-3.5" />
-                    <span>Table {tbl.table_number}</span>
+                    <span>{t('tableWithNumber', { number: tbl.table_number })}</span>
                   </span>
                   <span className="font-extrabold text-xs text-slate-800 truncate">
-                    {tbl.name || 'Standard Dining'}
+                    {tbl.name || t('standardDining')}
                   </span>
                 </div>
 
@@ -331,23 +333,23 @@ const Tables = () => {
                       : 'bg-slate-100 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {tbl.status === 'active' ? '🟢 Active' : '⚪ Inactive'}
+                  {tbl.status === 'active' ? `🟢 ${t('statusActive')}` : `⚪ ${t('statusInactive')}`}
                 </button>
               </div>
 
               {/* 1-Tap Occupancy Management for Staff on Smartphone */}
               <div className="p-2.5 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-extrabold text-slate-500">Seating:</span>
+                  <span className="text-[11px] font-extrabold text-slate-500">{t('diningSeatingHeader')}:</span>
                   {tbl.is_occupied ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-[11px] border border-amber-300 shadow-2xs">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span>👥 Customer In</span>
+                      <span>{t('customerInFilter')}</span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[11px] border border-emerald-300 shadow-2xs">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      <span>🪑 Available</span>
+                      <span>{t('availableFilter')}</span>
                     </span>
                   )}
                 </div>
@@ -363,20 +365,20 @@ const Tables = () => {
                   }`}
                 >
                   {togglingOccupancyId === tbl.id ? (
-                    <span>Updating...</span>
+                    <span>{t('saving')}</span>
                   ) : tbl.is_occupied ? (
-                    <span>Mark Available</span>
+                    <span>{t('markAvailable')}</span>
                   ) : (
-                    <span>Mark Customer In</span>
+                    <span>{t('markOccupied')}</span>
                   )}
                 </button>
               </div>
 
               {/* Table Info & Orders Count */}
               <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
-                <span>Orders recorded:</span>
+                <span>{t('ordersRecorded')}</span>
                 <span className="px-2.5 py-0.5 rounded-full bg-slate-100 font-extrabold text-slate-700 text-xs">
-                  {tbl.orders_count || 0} orders
+                  {tbl.orders_count || 0} {t('ordersHeader')}
                 </span>
               </div>
 
@@ -387,22 +389,22 @@ const Tables = () => {
                   className="flex-1 py-2 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-xs flex items-center justify-center gap-1.5 border border-orange-200 active:scale-95 transition-transform cursor-pointer"
                 >
                   <FiSmartphone className="w-3.5 h-3.5" />
-                  <span>View / Print QR</span>
+                  <span>{t('viewPrintQr')}</span>
                 </button>
 
                 <button
                   onClick={() => handleOpenModal(tbl)}
                   className="p-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer active:scale-95"
-                  title="Edit Table"
+                  title={t('editTableModal')}
                 >
                   <FiEdit2 className="w-3.5 h-3.5" />
-                  <span>Edit</span>
+                  <span>{t('edit')}</span>
                 </button>
 
                 <button
                   onClick={() => setDeletingTable(tbl)}
                   className="p-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                  title="Delete Table"
+                  title={t('delete')}
                 >
                   <FiTrash2 className="w-3.5 h-3.5" />
                 </button>
@@ -412,7 +414,7 @@ const Tables = () => {
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
             <FiMapPin className="w-6 h-6 mx-auto text-slate-300 mb-1" />
-            <p className="font-bold text-slate-600 text-sm">No tables found</p>
+            <p className="font-bold text-slate-600 text-sm">{t('noTablesFound')}</p>
           </div>
         )}
       </div>
@@ -425,13 +427,13 @@ const Tables = () => {
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4 font-bold">Table #</th>
-                <th className="py-3.5 px-4 font-bold">Location / Area Name</th>
-                <th className="py-3.5 px-4 font-bold text-center">Dining Seating Status</th>
-                <th className="py-3.5 px-4 font-bold text-center">Active Status</th>
-                <th className="py-3.5 px-4 font-bold text-center">Orders</th>
-                <th className="py-3.5 px-4 font-bold text-center">QR Standee</th>
-                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-bold">{t('tableNumberHeader')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('locationAreaHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('diningSeatingHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('activeStatusHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('ordersHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-center">{t('qrStandeeHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-right">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -446,12 +448,12 @@ const Tables = () => {
                     <td className="py-3 px-4 font-black text-slate-900 text-sm">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-50 text-orange-700 font-extrabold border border-orange-200">
                         <FiMapPin className="w-3.5 h-3.5" />
-                        <span>Table {tbl.table_number}</span>
+                        <span>{t('tableWithNumber', { number: tbl.table_number })}</span>
                       </span>
                     </td>
                     <td className="py-3 px-4 text-slate-700 font-semibold">
                       {tbl.name || (
-                        <span className="text-slate-400 font-normal italic">Standard Dining</span>
+                        <span className="text-slate-400 font-normal italic">{t('standardDining')}</span>
                       )}
                     </td>
 
@@ -466,17 +468,17 @@ const Tables = () => {
                             ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
                             : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
                         }`}
-                        title="Click to toggle Customer In / Available"
+                        title={tbl.is_occupied ? t('markAvailable') : t('markOccupied')}
                       >
                         {tbl.is_occupied ? (
                           <>
                             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                            <span>👥 Customer In</span>
+                            <span>{t('customerInFilter')}</span>
                           </>
                         ) : (
                           <>
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span>🪑 Available</span>
+                            <span>{t('availableFilter')}</span>
                           </>
                         )}
                       </button>
@@ -493,17 +495,17 @@ const Tables = () => {
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                         }`}
-                        title="Click to toggle active status"
+                        title={tbl.status === 'active' ? t('statusActive') : t('statusInactive')}
                       >
                         {tbl.status === 'active' ? (
                           <>
                             <FiCheckCircle className="w-3 h-3 text-emerald-600" />
-                            <span>Active</span>
+                            <span>{t('statusActive')}</span>
                           </>
                         ) : (
                           <>
                             <FiXCircle className="w-3 h-3 text-slate-400" />
-                            <span>Inactive</span>
+                            <span>{t('statusInactive')}</span>
                           </>
                         )}
                       </button>
@@ -523,7 +525,7 @@ const Tables = () => {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold border border-orange-200 transition-colors cursor-pointer"
                       >
                         <FiSmartphone className="w-3.5 h-3.5" />
-                        <span>View QR</span>
+                        <span>{t('viewQr')}</span>
                       </button>
                     </td>
 
@@ -532,14 +534,14 @@ const Tables = () => {
                       <button
                         onClick={() => handleOpenModal(tbl)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
-                        title="Edit Table"
+                        title={t('editTableModal')}
                       >
                         <FiEdit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeletingTable(tbl)}
                         className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Delete Table"
+                        title={t('delete')}
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
                       </button>
@@ -549,7 +551,7 @@ const Tables = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    No tables found.
+                    {t('noTablesFound')}
                   </td>
                 </tr>
               )}
@@ -562,32 +564,32 @@ const Tables = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingTable ? 'Edit Table' : 'Add New Table'}
+        title={editingTable ? t('editTableModal') : t('addTableModal')}
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Table Number *
+              {t('tableNumberLabel')} *
             </label>
             <input
               type="text"
               required
               value={formData.table_number}
               onChange={(e) => setFormData({ ...formData, table_number: e.target.value })}
-              placeholder="e.g., 01, 02, T-A1..."
+              placeholder={t('tableNumberInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-extrabold"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Area / Friendly Name (Optional)
+              {t('tableNameLabel')}
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Outdoor Patio, VIP Room 1, Bar Counter..."
+              placeholder={t('tableNameInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs"
             />
           </div>
@@ -595,7 +597,7 @@ const Tables = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Customer Dining Status
+                {t('customerDiningStatus')}
               </label>
               <select
                 value={formData.is_occupied ? 'true' : 'false'}
@@ -604,22 +606,22 @@ const Tables = () => {
                 }
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer font-bold"
               >
-                <option value="false">🪑 Available (No Customer)</option>
-                <option value="true">👥 Customer In (Occupied)</option>
+                <option value="false">{t('availableNoCustomer')}</option>
+                <option value="true">{t('customerInOccupied')}</option>
               </select>
             </div>
 
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Active Status
+                {t('activeStatusHeader')}
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer font-bold"
               >
-                <option value="active">🟢 Active</option>
-                <option value="inactive">⚪ Inactive</option>
+                <option value="active">🟢 {t('statusActive')}</option>
+                <option value="inactive">⚪ {t('statusInactive')}</option>
               </select>
             </div>
           </div>
@@ -630,14 +632,14 @@ const Tables = () => {
               onClick={() => setIsModalOpen(false)}
               className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Saving...' : editingTable ? 'Save Changes' : 'Create Table'}
+              {submitting ? t('saving') : editingTable ? t('saveChanges') : t('create')}
             </button>
           </div>
         </form>
@@ -648,7 +650,7 @@ const Tables = () => {
         <Modal
           isOpen={!!viewingQRTable}
           onClose={() => setViewingQRTable(null)}
-          title={`Table ${viewingQRTable.table_number} QR Standee`}
+          title={t('tableQrStandeeTitle', { number: viewingQRTable.table_number })}
           maxWidth="max-w-md"
         >
           <div className="space-y-4">
@@ -663,8 +665,8 @@ const Tables = () => {
         onClose={() => setDeletingTable(null)}
         onConfirm={handleDelete}
         loading={deleteLoading}
-        title={`Delete "Table ${deletingTable?.table_number}"?`}
-        message="Cannot delete tables with order history. If this table has active or past orders, please mark it as Inactive instead."
+        title={`${t('delete')} "${t('tableWithNumber', { number: deletingTable?.table_number })}"?`}
+        message={t('cannotDeleteTableMsg')}
       />
     </div>
   )

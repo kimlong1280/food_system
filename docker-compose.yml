@@ -1,0 +1,74 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database Service
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: food_system_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-food_system}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-food_system}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Laravel 12 API Backend (PHP-FPM 8.2 + Nginx)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: food_system_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: "SreyKeo Coffee & Soup"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:-base64:w4JoZ1uAw3ec9Hc+U/5ZkyEREm5LgNeF4GzmTJnNYQY=}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-food_system}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_SSLMODE: prefer
+      SESSION_DRIVER: database
+      CACHE_STORE: file
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:--5376919317}
+    ports:
+      - "8000:80"
+    volumes:
+      - storage_data:/var/www/html/storage
+
+  # ---------------------------------------------------------------------------
+  # React Vite Frontend (Nginx SPA)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: food_system_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+  storage_data:

@@ -21,8 +21,10 @@ import api from '../../services/api'
 import StatsCard from '../../components/admin/StatsCard'
 import StatusBadge from '../../components/admin/StatusBadge'
 import { PageLoading, Spinner } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Dashboard = () => {
+  const { t } = useLanguage()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -64,9 +66,9 @@ const Dashboard = () => {
     try {
       const res = await api.get('/admin/dashboard')
       setData(res.data)
-      if (isManual) toast.success('Dashboard metrics updated!')
+      if (isManual) toast.success(t('dashboardMetricsUpdated'))
     } catch {
-      toast.error('Failed to load dashboard metrics.')
+      toast.error(t('failedLoadStats'))
     } finally {
       setLoading(false)
       if (isManual) setRefreshing(false)
@@ -89,13 +91,13 @@ const Dashboard = () => {
     setUpdatingId(orderId)
     try {
       await api.put(`/admin/orders/${orderId}/status`, { status: newStatus })
-      toast.success(`Order status updated to ${newStatus.toUpperCase()}!`)
+      toast.success(t('orderStatusUpdated', { id: orderId, status: t(`status${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`) || newStatus.toUpperCase() }))
       await fetchDashboardStats()
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update order status.')
+      toast.error(err.response?.data?.message || t('failedUpdateStatus'))
     } finally {
       setUpdatingId(null)
     }
@@ -123,7 +125,7 @@ const Dashboard = () => {
   // Count active pending and preparing orders
   const activeKitchenCount = (data?.pending_orders || 0) + (data?.preparing_orders || 0)
 
-  if (loading) return <PageLoading text="Aggregating restaurant statistics..." />
+  if (loading) return <PageLoading text={t('loading')} />
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -136,14 +138,14 @@ const Dashboard = () => {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
             </span>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Restaurant Management
+              {t('restaurantAdmin')}
             </h1>
             <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 hidden sm:inline">
-              Live Hub
+              {t('kitchenLive')}
             </span>
           </div>
           <p className="text-xs text-slate-500 flex items-center gap-2">
-            <span>Cambodia Time:</span>
+            <span>{t('cambodiaTime')}:</span>
             <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
               {currentTime || '--:--:--'}
             </span>
@@ -157,7 +159,7 @@ const Dashboard = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold shadow-sm shadow-orange-600/20 active:scale-95 transition-all"
           >
             <FiPlus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Add Dish</span>
+            <span>{t('newMenuItem')}</span>
           </Link>
 
           <Link
@@ -165,7 +167,7 @@ const Dashboard = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shadow-sm shadow-slate-900/10 active:scale-95 transition-all"
           >
             <FiShoppingBag className="w-3.5 h-3.5" />
-            <span>Orders</span>
+            <span>{t('navOrders')}</span>
             {activeKitchenCount > 0 && (
               <span className="ml-1 px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px] font-black animate-pulse">
                 {activeKitchenCount}
@@ -178,14 +180,14 @@ const Dashboard = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-bold shadow-2xs active:scale-95 transition-all"
           >
             <FiMapPin className="w-3.5 h-3.5 text-slate-500" />
-            <span>Tables</span>
+            <span>{t('navTables')}</span>
           </Link>
 
           <button
             onClick={() => fetchDashboardStats(true)}
             disabled={refreshing}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            title="Refresh dashboard"
+            title={t('refreshStats')}
           >
             <FiRefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-600' : ''}`} />
           </button>
@@ -196,7 +198,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Today's Revenue with Dual USD & KHR */}
         <StatsCard
-          title="Today's Revenue"
+          title={t('todayRevenue')}
           value={data?.formatted_today_revenue || '$0.00'}
           khrValue={data?.formatted_today_revenue_khr}
           subtext={`All-time: ${data?.formatted_total_revenue || '$0.00'} (${data?.formatted_total_revenue_khr || '0 ៛'})`}
@@ -206,33 +208,33 @@ const Dashboard = () => {
 
         {/* Active Kitchen Orders */}
         <StatsCard
-          title="Active Kitchen"
+          title={t('pendingKitchen')}
           value={activeKitchenCount}
-          badge={data?.pending_orders > 0 ? `${data.pending_orders} pending` : 'All cooking'}
-          subtext={`${data?.preparing_orders || 0} preparing, ${data?.ready_orders || 0} ready`}
+          badge={data?.pending_orders > 0 ? `${data.pending_orders} ${t('statusPending')}` : t('statusPreparing')}
+          subtext={`${data?.preparing_orders || 0} ${t('statusPreparing')}, ${data?.ready_orders || 0} ${t('statusReady')}`}
           icon={<FiClock />}
           color="orange"
         />
 
         {/* Completed Orders */}
         <StatsCard
-          title="Completed Today"
+          title={t('completedOrders')}
           value={data?.completed_orders || 0}
-          subtext={`Total Orders: ${data?.total_orders || 0} all-time`}
+          subtext={`Total: ${data?.total_orders || 0}`}
           icon={<FiCheckCircle />}
           color="emerald"
         />
 
         {/* Table Occupancy */}
         <StatsCard
-          title="Dining Tables"
+          title={t('tablesTitle')}
           value={`${data?.active_tables || 0} / ${data?.total_tables || 0}`}
           badge={
             data?.total_tables > 0
-              ? `${Math.round(((data?.active_tables || 0) / data.total_tables) * 100)}% Occupied`
+              ? `${Math.round(((data?.active_tables || 0) / data.total_tables) * 100)}% ${t('statusOccupied')}`
               : '0%'
           }
-          subtext={`${(data?.total_tables || 0) - (data?.active_tables || 0)} tables currently free`}
+          subtext={`${(data?.total_tables || 0) - (data?.active_tables || 0)} ${t('statusAvailable')}`}
           icon={<FiMapPin />}
           color="blue"
         />
@@ -249,18 +251,18 @@ const Dashboard = () => {
               </div>
               <div>
                 <h3 className="font-black text-sm tracking-tight">
-                  {data.bill_requested_count} Table(s) Requested Bill Payment!
+                  {data.bill_requested_count} {t('billRequestedSuccess').split('!')[0]}
                 </h3>
                 <p className="text-xs text-white/90">
-                  Customers are waiting for staff to collect payment and provide receipt.
+                  {t('staffOnTheWay', { number: '' })}
                 </p>
               </div>
             </div>
             <Link
-              to="/admin/orders?filter=bill_requested"
+              to="/admin/orders?status=bill"
               className="px-4 py-2 bg-white text-orange-950 font-black text-xs rounded-xl hover:bg-orange-50 transition-all shadow-sm"
             >
-              Review & Settle Bills &rarr;
+              {t('printBill')} &rarr;
             </Link>
           </div>
         )}
@@ -271,14 +273,14 @@ const Dashboard = () => {
             <div className="flex items-center gap-2">
               <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>
-                You currently have <strong>{data.unavailable_items_count} menu items</strong> marked as sold out / hidden.
+                {data.unavailable_items_count} {t('soldOut')}
               </span>
             </div>
             <Link
               to="/admin/menu-items"
               className="font-extrabold underline text-amber-950 hover:text-orange-600"
             >
-              Manage Availability
+              {t('edit')}
             </Link>
           </div>
         )}
@@ -290,8 +292,8 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">Live Orders Management</h2>
-              <p className="text-xs text-slate-500">Track and advance incoming kitchen orders</p>
+              <h2 className="text-base font-extrabold text-slate-900">{t('liveOrders')}</h2>
+              <p className="text-xs text-slate-500">{t('liveOrderFeed')}</p>
             </div>
 
             {/* Live Search Filter */}
@@ -299,7 +301,7 @@ const Dashboard = () => {
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
               <input
                 type="text"
-                placeholder="Search table, #ORD..."
+                placeholder={t('searchOrdersPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-orange-500 focus:outline-none transition-all"
@@ -310,11 +312,11 @@ const Dashboard = () => {
           {/* Status Filter Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             {[
-              { key: 'all', label: 'All Orders' },
-              { key: 'pending', label: 'Pending' },
-              { key: 'preparing', label: 'Cooking' },
-              { key: 'ready', label: 'Ready' },
-              { key: 'completed', label: 'Completed' },
+              { key: 'all', label: t('allOrders') },
+              { key: 'pending', label: t('filterPending') },
+              { key: 'preparing', label: t('filterPreparing') },
+              { key: 'ready', label: t('filterReady') },
+              { key: 'completed', label: t('filterCompleted') },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -352,7 +354,7 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-lg bg-orange-600 text-white font-black text-xs">
-                          Table {order.table_number || 'N/A'}
+                          {t('tableNumber', { number: order.table_number || 'N/A' })}
                         </span>
                         <button
                           onClick={() => setSelectedOrder(order)}
@@ -366,7 +368,7 @@ const Dashboard = () => {
                         <StatusBadge status={order.status} />
                         {isBillRequested && (
                           <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-white animate-pulse">
-                            🔔 Bill Call
+                            🔔 {t('statusBillRequested')}
                           </span>
                         )}
                       </div>
@@ -374,7 +376,7 @@ const Dashboard = () => {
 
                     {/* Time & Customer */}
                     <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span>{order.customer_name ? `Guest: ${order.customer_name}` : 'Dine-in Guest'}</span>
+                      <span>{order.customer_name ? `${t('customerCol')}: ${order.customer_name}` : t('anonymousDiner')}</span>
                       <span className="text-[11px] text-slate-400">{order.formatted_time}</span>
                     </div>
 
@@ -394,21 +396,21 @@ const Dashboard = () => {
                             onClick={() => handleQuickStatusUpdate(order.id, 'preparing')}
                             className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-transform"
                           >
-                            👨‍🍳 Cook
+                            👨‍🍳 {t('startCooking')}
                           </button>
                         ) : order.status === 'preparing' ? (
                           <button
                             onClick={() => handleQuickStatusUpdate(order.id, 'ready')}
                             className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-transform"
                           >
-                            🔔 Ready
+                            🔔 {t('markReady')}
                           </button>
                         ) : order.status === 'ready' ? (
                           <button
                             onClick={() => handleQuickStatusUpdate(order.id, 'served')}
                             className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-transform"
                           >
-                            🍽️ Served
+                            🍽️ {t('deliverOrder')}
                           </button>
                         ) : order.status === 'served' ? (
                           <button
@@ -416,14 +418,14 @@ const Dashboard = () => {
                             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-transform flex items-center gap-1"
                           >
                             <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
-                            <span>Paid</span>
+                            <span>{t('completeOrder')}</span>
                           </button>
                         ) : (
                           <button
                             onClick={() => setSelectedOrder(order)}
                             className="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold"
                           >
-                            View
+                            {t('viewDetails')}
                           </button>
                         )}
                       </div>
@@ -434,7 +436,7 @@ const Dashboard = () => {
             ) : (
               <div className="py-6 text-center text-slate-400 space-y-1">
                 <FiShoppingBag className="w-5 h-5 mx-auto text-slate-300" />
-                <p className="text-xs font-bold text-slate-500">No matching orders</p>
+                <p className="text-xs font-bold text-slate-500">{t('noOrdersFound')}</p>
               </div>
             )}
           </div>
@@ -444,12 +446,12 @@ const Dashboard = () => {
             <table className="w-full text-left text-xs min-w-[580px]">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="pb-3 font-extrabold">Order #</th>
-                  <th className="pb-3 font-extrabold">Table</th>
-                  <th className="pb-3 font-extrabold">Total (USD / KHR)</th>
-                  <th className="pb-3 font-extrabold">Time</th>
-                  <th className="pb-3 font-extrabold">Status</th>
-                  <th className="pb-3 font-extrabold text-right">Action</th>
+                  <th className="pb-3 font-extrabold">{t('orderNumberCol')}</th>
+                  <th className="pb-3 font-extrabold">{t('tableCol')}</th>
+                  <th className="pb-3 font-extrabold">{t('totalCol')} (USD / KHR)</th>
+                  <th className="pb-3 font-extrabold">{t('timeCol')}</th>
+                  <th className="pb-3 font-extrabold">{t('statusCol')}</th>
+                  <th className="pb-3 font-extrabold text-right">{t('actionsCol')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -465,7 +467,7 @@ const Dashboard = () => {
                           <button
                             onClick={() => setSelectedOrder(order)}
                             className="hover:text-orange-600 cursor-pointer flex items-center gap-1"
-                            title="Click to view full ticket"
+                            title={t('viewDetails')}
                           >
                             <span>#{order.order_number}</span>
                             <FiEye className="w-3 h-3 text-slate-400" />
@@ -481,7 +483,7 @@ const Dashboard = () => {
                         <td className="py-3">
                           <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg">
                             <FiMapPin className="w-3 h-3 text-slate-500" />
-                            <span>Table {order.table_number || 'N/A'}</span>
+                            <span>{t('tableNumber', { number: order.table_number || 'N/A' })}</span>
                           </span>
                         </td>
 
@@ -502,7 +504,7 @@ const Dashboard = () => {
                             <StatusBadge status={order.status} />
                             {isBillRequested && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-white animate-pulse">
-                                🔔 Bill Call
+                                🔔 {t('statusBillRequested')}
                               </span>
                             )}
                           </div>
@@ -516,40 +518,40 @@ const Dashboard = () => {
                             <button
                               onClick={() => handleQuickStatusUpdate(order.id, 'preparing')}
                               className="px-3 py-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
-                              title="Accept and start cooking"
+                              title={t('startCooking')}
                             >
-                              Cook
+                              {t('startCooking')}
                             </button>
                           ) : order.status === 'preparing' ? (
                             <button
                               onClick={() => handleQuickStatusUpdate(order.id, 'ready')}
                               className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
-                              title="Mark food ready to serve"
+                              title={t('markReady')}
                             >
-                              Ready
+                              {t('markReady')}
                             </button>
                           ) : order.status === 'ready' ? (
                             <button
                               onClick={() => handleQuickStatusUpdate(order.id, 'served')}
                               className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
-                              title="Mark delivered to table"
+                              title={t('deliverOrder')}
                             >
-                              Served
+                              {t('deliverOrder')}
                             </button>
                           ) : order.status === 'served' ? (
                             <button
                               onClick={() => handleQuickStatusUpdate(order.id, 'completed')}
                               className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black shadow-xs cursor-pointer transition-all active:scale-95"
-                              title="Collect bill and complete"
+                              title={t('completeOrder')}
                             >
-                              Paid
+                              {t('completeOrder')}
                             </button>
                           ) : (
                             <button
                               onClick={() => setSelectedOrder(order)}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold transition-colors cursor-pointer"
                             >
-                              View
+                              {t('viewDetails')}
                             </button>
                           )}
                         </td>
@@ -560,8 +562,8 @@ const Dashboard = () => {
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-slate-400 space-y-1">
                       <FiShoppingBag className="w-6 h-6 mx-auto text-slate-300" />
-                      <p className="text-xs font-bold text-slate-500">No matching orders found</p>
-                      <p className="text-[11px] text-slate-400">Try changing the status tab or search filter.</p>
+                      <p className="text-xs font-bold text-slate-500">{t('noOrdersFound')}</p>
+                      <p className="text-[11px] text-slate-400">{t('noOrdersFoundDesc')}</p>
                     </td>
                   </tr>
                 )}
@@ -570,12 +572,12 @@ const Dashboard = () => {
           </div>
 
           <div className="pt-2 flex justify-between items-center text-xs text-slate-500 border-t border-slate-100">
-            <span>Showing {filteredOrders.length} recent orders</span>
+            <span>{filteredOrders.length} {t('items')}</span>
             <Link
               to="/admin/orders"
               className="font-extrabold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1"
             >
-              <span>View Full Orders History</span>
+              <span>{t('allOrders')}</span>
               <FiArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -587,14 +589,14 @@ const Dashboard = () => {
           <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-extrabold text-slate-900">Tables Snapshot</h2>
-                <p className="text-xs text-slate-500">Live floor occupancy</p>
+                <h2 className="text-base font-extrabold text-slate-900">{t('tablesTitle')}</h2>
+                <p className="text-xs text-slate-500">{t('liveKitchenPulse')}</p>
               </div>
               <Link
                 to="/admin/tables"
                 className="text-xs font-bold text-orange-600 hover:text-orange-700"
               >
-                QR Codes &rarr;
+                {t('navTables')} &rarr;
               </Link>
             </div>
 
@@ -610,7 +612,7 @@ const Dashboard = () => {
                         ? 'bg-orange-50 border-orange-300 text-orange-950 shadow-xs'
                         : 'bg-slate-50 border-slate-200/80 text-slate-600'
                     }`}
-                    title={`Table ${tbl.table_number} (${tbl.is_occupied ? 'Occupied / Dining' : 'Available'})`}
+                    title={`Table ${tbl.table_number} (${tbl.is_occupied ? t('statusOccupied') : t('statusAvailable')})`}
                   >
                     <span
                       className={`inline-block w-2 h-2 rounded-full mb-1 ${
@@ -623,7 +625,7 @@ const Dashboard = () => {
                 ))
               ) : (
                 <p className="col-span-4 text-center text-xs text-slate-400 py-4">
-                  No tables configured yet.
+                  {t('noRecentOrders')}
                 </p>
               )}
             </div>
@@ -631,11 +633,11 @@ const Dashboard = () => {
             <div className="flex items-center justify-center gap-4 text-[11px] pt-1 text-slate-500">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Free ({data?.total_tables - (data?.active_tables || 0)})</span>
+                <span>{t('statusAvailable')} ({data?.total_tables - (data?.active_tables || 0)})</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                <span className="font-bold text-slate-700">Dining ({data?.active_tables || 0})</span>
+                <span className="font-bold text-slate-700">{t('statusOccupied')} ({data?.active_tables || 0})</span>
               </span>
             </div>
           </div>
@@ -644,14 +646,14 @@ const Dashboard = () => {
           <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-extrabold text-slate-900">Popular Dishes</h2>
-                <p className="text-xs text-slate-500">Top selling menu items</p>
+                <h2 className="text-base font-extrabold text-slate-900">{t('popularDishes')}</h2>
+                <p className="text-xs text-slate-500">{t('chefSpecial')}</p>
               </div>
               <Link
                 to="/admin/menu-items"
                 className="text-xs font-bold text-orange-600 hover:text-orange-700"
               >
-                All Menu &rarr;
+                {t('navMenuItems')} &rarr;
               </Link>
             </div>
 
@@ -688,14 +690,14 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right shrink-0">
                       <span className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-700 shadow-2xs">
-                        {entry.total_ordered} sold
+                        {entry.total_ordered} {t('items')}
                       </span>
                     </div>
                   </div>
                 ))
               ) : (
                 <p className="text-xs text-slate-400 text-center py-6">
-                  No orders recorded yet.
+                  {t('noRecentOrders')}
                 </p>
               )}
             </div>
@@ -712,17 +714,17 @@ const Dashboard = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-lg text-slate-900">
-                    Order #{selectedOrder.order_number}
+                    {t('orderDetails', { number: selectedOrder.order_number })}
                   </h3>
                   <StatusBadge status={selectedOrder.status} />
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Table {selectedOrder.table_number || 'N/A'} • {selectedOrder.formatted_time}, {selectedOrder.formatted_date}
+                  {t('tableNumber', { number: selectedOrder.table_number || 'N/A' })} • {selectedOrder.formatted_time}, {selectedOrder.formatted_date}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+                className="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
                 <FiX className="w-5 h-5" />
               </button>
@@ -732,13 +734,13 @@ const Dashboard = () => {
             <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1 text-xs">
               {selectedOrder.customer_name && (
                 <p>
-                  <span className="font-bold text-slate-500">Customer: </span>
+                  <span className="font-bold text-slate-500">{t('customerCol')}: </span>
                   <span className="font-extrabold text-slate-900">{selectedOrder.customer_name}</span>
                 </p>
               )}
               {selectedOrder.note && (
                 <p>
-                  <span className="font-bold text-slate-500">Order Note: </span>
+                  <span className="font-bold text-slate-500">{t('customerNote')}: </span>
                   <span className="italic text-slate-700">{selectedOrder.note}</span>
                 </p>
               )}
@@ -747,7 +749,7 @@ const Dashboard = () => {
             {/* Items List */}
             <div className="space-y-2">
               <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                Ordered Items
+                {t('orderedItems', { count: selectedOrder.items?.length || 0 })}
               </h4>
               <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto pr-1">
                 {selectedOrder.items?.map((item) => (
@@ -757,7 +759,7 @@ const Dashboard = () => {
                         {item.item_name} <span className="text-orange-600 font-extrabold">x{item.quantity}</span>
                       </p>
                       {item.note && (
-                        <p className="text-[11px] text-slate-400 italic mt-0.5">Note: {item.note}</p>
+                        <p className="text-[11px] text-slate-400 italic mt-0.5">{t('note')}: {item.note}</p>
                       )}
                     </div>
                     <span className="font-black text-slate-900">
@@ -771,7 +773,7 @@ const Dashboard = () => {
             {/* Total Summary */}
             <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
               <div>
-                <p className="text-[10px] font-extrabold uppercase text-slate-400">Total Due</p>
+                <p className="text-[10px] font-extrabold uppercase text-slate-400">{t('totalAmount')}</p>
                 <p className="text-xs font-bold text-slate-500">
                   {selectedOrder.formatted_total_khr}
                 </p>
@@ -786,26 +788,26 @@ const Dashboard = () => {
               {selectedOrder.status !== 'preparing' && selectedOrder.status !== 'completed' && (
                 <button
                   onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'preparing')}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs"
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs cursor-pointer active:scale-95 transition-transform"
                 >
-                  Start Cooking
+                  {t('startCooking')}
                 </button>
               )}
               {selectedOrder.status !== 'ready' && selectedOrder.status !== 'completed' && (
                 <button
                   onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'ready')}
-                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs"
+                  className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs cursor-pointer active:scale-95 transition-transform"
                 >
-                  Mark Ready
+                  {t('markReady')}
                 </button>
               )}
               {selectedOrder.status !== 'completed' && (
                 <button
                   onClick={() => handleQuickStatusUpdate(selectedOrder.id, 'completed')}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform"
                 >
                   <FiCheck className="w-4 h-4 stroke-[3]" />
-                  <span>Mark Completed & Paid</span>
+                  <span>{t('completeOrder')}</span>
                 </button>
               )}
             </div>

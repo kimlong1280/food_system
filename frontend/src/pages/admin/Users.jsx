@@ -15,9 +15,11 @@ import { useAuth } from '../../context/AuthContext'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Users = () => {
   const { user: currentUser } = useAuth()
+  const { t } = useLanguage()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,7 +44,7 @@ const Users = () => {
       const res = await api.get('/admin/users')
       setUsers(res.data.data || [])
     } catch {
-      toast.error('Failed to load user accounts.')
+      toast.error(t('failedLoadUsers'))
     } finally {
       setLoading(false)
     }
@@ -80,16 +82,16 @@ const Users = () => {
     try {
       if (editingUser) {
         await api.put(`/admin/users/${editingUser.id}`, formData)
-        toast.success('User updated successfully!')
+        toast.success(t('userUpdatedSuccess'))
       } else {
         await api.post('/admin/users', formData)
-        toast.success('User account created!')
+        toast.success(t('userCreatedSuccess'))
       }
 
       setIsModalOpen(false)
       fetchUsers()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save user account.'
+      const msg = err.response?.data?.message || t('failedSaveUser')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -101,11 +103,11 @@ const Users = () => {
     setDeleteLoading(true)
     try {
       await api.delete(`/admin/users/${deletingUser.id}`)
-      toast.success('User deleted.')
+      toast.success(t('userDeletedSuccess'))
       setDeletingUser(null)
       fetchUsers()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to delete user.'
+      const msg = err.response?.data?.message || t('failedSaveUser')
       toast.error(msg)
     } finally {
       setDeleteLoading(false)
@@ -117,7 +119,7 @@ const Users = () => {
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
   })
 
-  if (loading) return <PageLoading text="Loading staff accounts..." />
+  if (loading) return <PageLoading text={t('loadingUsers')} />
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -126,14 +128,14 @@ const Users = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Staff & Admins
+              {t('usersTitle')}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-black">
-              {users.length} accounts
+              {t('totalUsersCount', { count: users.length })}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage restaurant administrators, managers, and kitchen staff credentials.
+            {t('usersSubtitle')}
           </p>
         </div>
 
@@ -142,7 +144,7 @@ const Users = () => {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-stretch sm:self-auto cursor-pointer"
         >
           <FiPlus className="w-4 h-4 stroke-[3]" />
-          <span>Add New Account</span>
+          <span>{t('addNewAccount')}</span>
         </button>
       </div>
 
@@ -155,7 +157,7 @@ const Users = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search accounts by name or email..."
+          placeholder={t('searchAccountsPlaceholder')}
           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs placeholder:text-slate-400 focus:outline-hidden focus:border-orange-500 shadow-2xs"
         />
         {searchQuery && (
@@ -193,13 +195,13 @@ const Users = () => {
                         <h3 className="font-extrabold text-sm text-slate-900 truncate">{u.name}</h3>
                         {isCurrent && (
                           <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.2 rounded-full font-black shrink-0">
-                            You
+                            {t('youBadge')}
                           </span>
                         )}
                       </div>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
                         <FiShield className="w-2.5 h-2.5" />
-                        <span>{u.role}</span>
+                        <span>{u.role === 'admin' ? 'Admin' : u.role === 'cashier' ? 'Cashier' : 'Staff'}</span>
                       </span>
                     </div>
 
@@ -217,14 +219,14 @@ const Users = () => {
                     className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
                   >
                     <FiEdit2 className="w-3.5 h-3.5" />
-                    <span>Edit Details</span>
+                    <span>{t('editDetails')}</span>
                   </button>
 
                   <button
                     onClick={() => setDeletingUser(u)}
                     disabled={isCurrent}
                     className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 disabled:opacity-25 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                    title={isCurrent ? "You cannot delete your own active account" : "Delete Account"}
+                    title={isCurrent ? t('cannotDeleteOwnAccount') : t('deleteAccount')}
                   >
                     <FiTrash2 className="w-3.5 h-3.5" />
                   </button>
@@ -235,7 +237,7 @@ const Users = () => {
         ) : (
           <div className="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-200/80">
             <FiUser className="w-6 h-6 mx-auto text-slate-300 mb-1" />
-            <p className="font-bold text-slate-600 text-sm">No accounts found</p>
+            <p className="font-bold text-slate-600 text-sm">{t('noAccountsFound')}</p>
           </div>
         )}
       </div>
@@ -248,10 +250,10 @@ const Users = () => {
           <table className="w-full text-left text-xs min-w-[500px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200/80 text-slate-500 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4 font-bold">User</th>
-                <th className="py-3.5 px-4 font-bold">Email</th>
-                <th className="py-3.5 px-4 font-bold">Role</th>
-                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-bold">{t('userHeader')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('emailHeader')}</th>
+                <th className="py-3.5 px-4 font-bold">{t('roleHeader')}</th>
+                <th className="py-3.5 px-4 font-bold text-right">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -270,7 +272,7 @@ const Users = () => {
                             <span>{u.name}</span>
                             {isCurrent && (
                               <span className="ml-2 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
-                                You
+                                {t('youBadge')}
                               </span>
                             )}
                           </div>
@@ -280,14 +282,14 @@ const Users = () => {
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 border border-purple-200">
                           <FiShield className="w-3 h-3" />
-                          <span>{u.role}</span>
+                          <span>{u.role === 'admin' ? 'Admin' : u.role === 'cashier' ? 'Cashier' : 'Staff'}</span>
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
                         <button
                           onClick={() => handleOpenModal(u)}
                           className="p-2 rounded-xl bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
-                          title="Edit Account"
+                          title={t('editUserModal')}
                         >
                           <FiEdit2 className="w-3.5 h-3.5" />
                         </button>
@@ -295,7 +297,7 @@ const Users = () => {
                           onClick={() => setDeletingUser(u)}
                           disabled={isCurrent}
                           className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 disabled:opacity-30 transition-colors cursor-pointer"
-                          title="Delete Account"
+                          title={isCurrent ? t('cannotDeleteOwnAccount') : t('deleteAccount')}
                         >
                           <FiTrash2 className="w-3.5 h-3.5" />
                         </button>
@@ -306,7 +308,7 @@ const Users = () => {
               ) : (
                 <tr>
                   <td colSpan={4} className="py-12 text-center text-slate-400">
-                    No accounts found.
+                    {t('noAccountsFound')}
                   </td>
                 </tr>
               )}
@@ -319,40 +321,40 @@ const Users = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingUser ? 'Edit Staff Account' : 'Create Staff Account'}
+        title={editingUser ? t('editUserModal') : t('addUserModal')}
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Full Name *
+              {t('userNameLabel')} *
             </label>
             <input
               type="text"
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Alex Johnson"
+              placeholder={t('userNameInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-medium"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Email Address *
+              {t('userEmailLabel')} *
             </label>
             <input
               type="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="staff@restaurant.com"
+              placeholder={t('userEmailInputPlaceholder')}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 shadow-2xs font-medium"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Password {editingUser && '(Leave blank to keep existing)'}
+              {t('userPasswordLabel')} {editingUser && t('leaveBlankKeepPassword')}
             </label>
             <input
               type="password"
@@ -367,15 +369,15 @@ const Users = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Role
+              {t('userRoleLabel')}
             </label>
             <select
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-2xl focus:outline-hidden focus:border-orange-500 bg-white shadow-2xs cursor-pointer"
             >
-              <option value="admin">Administrator (Full Access)</option>
-              <option value="customer">Customer / Staff</option>
+              <option value="admin">{t('roleAdmin')}</option>
+              <option value="customer">{t('roleCustomer')}</option>
             </select>
           </div>
 
@@ -385,14 +387,14 @@ const Users = () => {
               onClick={() => setIsModalOpen(false)}
               className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="px-5 py-2.5 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}
+              {submitting ? t('saving') : editingUser ? t('saveChanges') : t('create')}
             </button>
           </div>
         </form>
@@ -404,8 +406,8 @@ const Users = () => {
         onClose={() => setDeletingUser(null)}
         onConfirm={handleDelete}
         loading={deleteLoading}
-        title={`Delete "${deletingUser?.name}"?`}
-        message="This staff member will lose access to the administrative dashboard immediately."
+        title={t('deleteUserConfirm', { name: deletingUser?.name || '' })}
+        message={t('deleteUserMsg')}
       />
     </div>
   )

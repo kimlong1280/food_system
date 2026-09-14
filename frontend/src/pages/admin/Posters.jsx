@@ -5,8 +5,10 @@ import api from '../../services/api'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PageLoading } from '../../components/Loading'
+import { useLanguage } from '../../context/LanguageContext'
 
 const Posters = () => {
+  const { t } = useLanguage()
   const [posters, setPosters] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -33,7 +35,7 @@ const Posters = () => {
       const res = await api.get('/admin/posters')
       setPosters(res.data.data || [])
     } catch {
-      toast.error('Failed to load posters.')
+      toast.error(t('failedLoadPosters'))
     } finally {
       setLoading(false)
     }
@@ -92,18 +94,18 @@ const Posters = () => {
         await api.post(`/admin/posters/${editingPoster.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Poster updated successfully!')
+        toast.success(t('posterUpdatedSuccess'))
       } else {
         await api.post('/admin/posters', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        toast.success('Poster created successfully!')
+        toast.success(t('posterCreatedSuccess'))
       }
 
       setIsModalOpen(false)
       fetchPosters()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save poster.'
+      const msg = err.response?.data?.message || t('failedSavePoster')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -115,36 +117,36 @@ const Posters = () => {
     setDeleteLoading(true)
     try {
       await api.delete(`/admin/posters/${deletingPoster.id}`)
-      toast.success('Poster deleted.')
+      toast.success(t('posterDeletedSuccess'))
       setDeletingPoster(null)
       fetchPosters()
     } catch {
-      toast.error('Failed to delete poster.')
+      toast.error(t('failedSavePoster'))
     } finally {
       setDeleteLoading(false)
     }
   }
 
-  if (loading) return <PageLoading text="Loading promotional banners..." />
+  if (loading) return <PageLoading text={t('loadingPosters')} />
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Promotional Posters & Banners
+            {t('postersTitle')}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Display special deals, discounts, and combo offers on the customer homepage carousel.
+            {t('postersSubtitle')}
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-600/20 active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
         >
           <FiPlus className="w-4 h-4" />
-          <span>Add New Banner</span>
+          <span>{t('addNewBanner')}</span>
         </button>
       </div>
 
@@ -169,7 +171,7 @@ const Posters = () => {
                         : 'bg-rose-500 text-white shadow-xs'
                     }`}
                   >
-                    {poster.status ? 'Active' : 'Inactive'}
+                    {poster.status ? t('statusActive') : t('statusInactive')}
                   </span>
                 </div>
               </div>
@@ -177,7 +179,7 @@ const Posters = () => {
               <div className="p-4 space-y-1">
                 <h3 className="font-extrabold text-base text-slate-900">{poster.title}</h3>
                 <p className="text-xs text-slate-500 line-clamp-2">
-                  {poster.description || 'No description provided.'}
+                  {poster.description || t('noDescriptionProvided')}
                 </p>
               </div>
             </div>
@@ -185,22 +187,22 @@ const Posters = () => {
             <div className="p-4 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
               <span className="text-slate-400 font-medium">
                 {poster.start_date || poster.end_date
-                  ? `${poster.start_date || 'Always'} → ${poster.end_date || 'Ongoing'}`
-                  : 'Always active'}
+                  ? `${poster.start_date || t('always')} → ${poster.end_date || t('ongoing')}`
+                  : t('alwaysActive')}
               </span>
 
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleOpenModal(poster)}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors"
-                  title="Edit Banner"
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-orange-50 text-slate-600 hover:text-orange-600 transition-colors cursor-pointer"
+                  title={t('editBanner')}
                 >
                   <FiEdit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setDeletingPoster(poster)}
-                  className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors"
-                  title="Delete Banner"
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
+                  title={t('delete')}
                 >
                   <FiTrash2 className="w-3.5 h-3.5" />
                 </button>
@@ -214,31 +216,31 @@ const Posters = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingPoster ? 'Edit Banner' : 'Create Banner'}
+        title={editingPoster ? t('editPosterModal') : t('addPosterModal')}
       >
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Banner Title *
+              {t('posterTitleLabel')} *
             </label>
             <input
               type="text"
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g. Special Combo Offer!"
+              placeholder={t('posterTitleInputPlaceholder')}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Description
+              {t('posterDescriptionLabel')}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Promotional copy displayed over the banner image..."
+              placeholder={t('posterDescriptionInputPlaceholder')}
               rows={2}
               className="w-full p-3 border border-slate-200 rounded-xl focus:outline-hidden focus:border-orange-500"
             />
@@ -246,19 +248,19 @@ const Posters = () => {
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Upload Image File (or provide URL below)
+              {t('uploadImageFile')}
             </label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files[0])}
-              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
             />
           </div>
 
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Image Web URL
+              {t('imageWebUrl')}
             </label>
             <input
               type="url"
@@ -272,7 +274,7 @@ const Posters = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Start Date
+                {t('posterStartDateLabel')}
               </label>
               <input
                 type="date"
@@ -284,7 +286,7 @@ const Posters = () => {
 
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
-                End Date
+                {t('posterEndDateLabel')}
               </label>
               <input
                 type="date"
@@ -303,7 +305,7 @@ const Posters = () => {
                 onChange={(e) => setFormData({ ...formData, status: e.target.checked })}
                 className="rounded text-orange-600 focus:ring-orange-500 w-4 h-4"
               />
-              <span className="font-bold text-slate-800">Banner Active (Visible to Customers)</span>
+              <span className="font-bold text-slate-800">{t('bannerActiveLabel')}</span>
             </label>
           </div>
 
@@ -311,16 +313,16 @@ const Posters = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-md active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Saving...' : editingPoster ? 'Save Changes' : 'Create Banner'}
+              {submitting ? t('saving') : editingPoster ? t('saveChanges') : t('createBanner')}
             </button>
           </div>
         </form>
@@ -332,8 +334,8 @@ const Posters = () => {
         onClose={() => setDeletingPoster(null)}
         onConfirm={handleDelete}
         loading={deleteLoading}
-        title={`Delete Banner "${deletingPoster?.title}"?`}
-        message="This banner will immediately stop appearing on the customer menu homepage."
+        title={t('deleteBannerConfirm', { title: deletingPoster?.title || '' })}
+        message={t('deleteBannerMsg')}
       />
     </div>
   )
