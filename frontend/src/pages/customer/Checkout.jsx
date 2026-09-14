@@ -85,6 +85,8 @@ const Checkout = () => {
         note: orderNote.trim() || null,
         items: cartItems.map((item) => ({
           menu_item_id: item.menu_item_id,
+          menu_item_price_id: item.menu_item_price_id || null,
+          variant_name: item.variant_name || null,
           quantity: item.quantity,
           note: item.note ? item.note.trim() : null,
         })),
@@ -296,6 +298,11 @@ const Checkout = () => {
                     <p className="font-bold text-slate-900">
                       {item.name} <span className="text-orange-600 font-extrabold">x{item.quantity}</span>
                     </p>
+                    {item.variant_name && (
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 mt-0.5">
+                        {item.variant_name}
+                      </span>
+                    )}
                     {item.note && (
                       <p className="text-[11px] text-slate-500 italic mt-0.5">{t('note')}: {item.note}</p>
                     )}

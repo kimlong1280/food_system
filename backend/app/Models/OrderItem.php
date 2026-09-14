@@ -13,7 +13,9 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'menu_item_id',
+        'menu_item_price_id',
         'item_name',
+        'variant_name',
         'price',
         'quantity',
         'subtotal',
@@ -43,5 +45,13 @@ class OrderItem extends Model
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
+    }
+
+    /**
+     * Get the referenced price variant (may be null if not using variants or deleted).
+     */
+    public function menuItemPrice(): BelongsTo
+    {
+        return $this->belongsTo(MenuItemPrice::class, 'menu_item_price_id');
     }
 }

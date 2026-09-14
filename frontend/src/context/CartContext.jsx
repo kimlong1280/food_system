@@ -61,10 +61,28 @@ export const CartProvider = ({ children }) => {
   }, [])
 
   // Add item to cart
-  const addToCart = (menuItem, quantity = 1, note = '') => {
+  const addToCart = (menuItem, quantity = 1, note = '', selectedVariant = null) => {
+    // Resolve variant details if provided or if item has multiple prices
+    let variantId = selectedVariant?.id || null
+    let variantName = selectedVariant?.name || null
+    let unitPrice = selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(menuItem.price)
+
+    // Fallback: If no variant explicitly passed but item has prices
+    if (!selectedVariant && menuItem.prices && menuItem.prices.length > 0) {
+      const defaultVar = menuItem.prices.find((p) => p.is_default) || menuItem.prices[0]
+      if (defaultVar) {
+        variantId = defaultVar.id
+        variantName = defaultVar.name
+        unitPrice = parseFloat(defaultVar.price)
+      }
+    }
+
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
-        (i) => i.menu_item_id === menuItem.id && (i.note || '') === (note || '')
+        (i) =>
+          i.menu_item_id === menuItem.id &&
+          (i.menu_item_price_id || null) === (variantId || null) &&
+          (i.note || '') === (note || '')
       )
 
       if (existingIndex > -1) {
@@ -79,10 +97,12 @@ export const CartProvider = ({ children }) => {
       return [
         ...prev,
         {
-          id: `${menuItem.id}-${Date.now()}`,
+          id: `${menuItem.id}-${variantId || 'base'}-${Date.now()}`,
           menu_item_id: menuItem.id,
+          menu_item_price_id: variantId,
+          variant_name: variantName,
           name: menuItem.name,
-          price: parseFloat(menuItem.price),
+          price: unitPrice,
           image: menuItem.image,
           type: menuItem.type,
           quantity: Math.max(1, quantity),

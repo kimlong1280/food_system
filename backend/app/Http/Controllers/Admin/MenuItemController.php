@@ -19,7 +19,7 @@ class MenuItemController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = MenuItem::with('category');
+        $query = MenuItem::with(['category', 'prices']);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -54,32 +54,77 @@ class MenuItemController extends Controller
     public function store(StoreMenuItemRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $pricesInput = $data['prices'] ?? null;
+        unset($data['prices']);
 
-        // Convert Khmer Riel to USD (Exchange Rate: $1 = 4,000 KHR)
-        if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
-            $data['price'] = round((float) $data['price'] / 4000, 2);
-        } elseif ((float) $data['price'] > 500) {
-            // Auto-detect if price was entered directly in Riel without currency tag
-            $data['price'] = round((float) $data['price'] / 4000, 2);
+        // Process multiple prices if provided
+        $processedPrices = [];
+        if (is_array($pricesInput) && count($pricesInput) > 0) {
+            foreach ($pricesInput as $idx => $p) {
+                $rawPrice = (float) ($p['price'] ?? 0);
+                if (isset($p['currency']) && strtoupper($p['currency']) === 'KHR') {
+                    $rawPrice = round($rawPrice / 4000, 2);
+                } elseif ($rawPrice > 500) {
+                    $rawPrice = round($rawPrice / 4000, 2);
+                }
+                if ($rawPrice < 0.01) {
+                    $rawPrice = 0.01;
+                }
+
+                $name = trim($p['name'] ?? '');
+                if ($name === '') {
+                    $khrFormatted = number_format(round($rawPrice * 4000));
+                    $name = "{$khrFormatted} ៛";
+                }
+
+                $processedPrices[] = [
+                    'name' => $name,
+                    'price' => $rawPrice,
+                    'is_default' => !empty($p['is_default']),
+                    'sort_order' => isset($p['sort_order']) ? (int) $p['sort_order'] : $idx,
+                ];
+            }
+
+            // Ensure at least one default
+            $hasDefault = collect($processedPrices)->contains('is_default', true);
+            if (!$hasDefault && count($processedPrices) > 0) {
+                $processedPrices[0]['is_default'] = true;
+            }
+
+            // Sync base item price to default or lowest price
+            $defaultOption = collect($processedPrices)->firstWhere('is_default', true);
+            $data['price'] = $defaultOption ? $defaultOption['price'] : collect($processedPrices)->min('price');
+        } else {
+            // Single price handling
+            if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
+                $data['price'] = round((float) $data['price'] / 4000, 2);
+            } elseif (isset($data['price']) && (float) $data['price'] > 500) {
+                $data['price'] = round((float) $data['price'] / 4000, 2);
+            }
+            if (isset($data['price']) && $data['price'] < 0.01) {
+                $data['price'] = 0.01;
+            }
         }
         unset($data['currency']);
-
-        if ($data['price'] < 0.01) {
-            $data['price'] = 0.01;
-        }
 
         if ($request->hasFile('image_file')) {
             $path = $request->file('image_file')->store('menu_items', 'public');
             $data['image'] = $path;
         }
-
         unset($data['image_file']);
 
         $item = MenuItem::create($data);
 
+        // Insert prices if multiple prices mode
+        if (!empty($processedPrices)) {
+            foreach ($processedPrices as $priceData) {
+                $item->prices()->create($priceData);
+            }
+        }
+
         return response()->json([
             'message' => 'Menu item created successfully.',
-            'item' => new MenuItemResource($item->load('category')),
+            'item' => new MenuItemResource($item->load(['category', 'prices'])),
         ], 201);
     }
 
@@ -88,7 +133,7 @@ class MenuItemController extends Controller
      */
     public function show(MenuItem $menuItem): MenuItemResource
     {
-        return new MenuItemResource($menuItem->load('category'));
+        return new MenuItemResource($menuItem->load(['category', 'prices']));
     }
 
     /**
@@ -97,19 +142,56 @@ class MenuItemController extends Controller
     public function update(UpdateMenuItemRequest $request, MenuItem $menuItem): JsonResponse
     {
         $data = $request->validated();
+        $hasPricesKey = array_key_exists('prices', $data);
+        $pricesInput = $data['prices'] ?? null;
+        unset($data['prices']);
 
-        // Convert Khmer Riel to USD (Exchange Rate: $1 = 4,000 KHR)
-        if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
-            $data['price'] = round((float) $data['price'] / 4000, 2);
-        } elseif (isset($data['price']) && (float) $data['price'] > 500) {
-            // Auto-detect if price was entered directly in Riel without currency tag
-            $data['price'] = round((float) $data['price'] / 4000, 2);
+        $processedPrices = [];
+        if ($hasPricesKey && is_array($pricesInput) && count($pricesInput) > 0) {
+            foreach ($pricesInput as $idx => $p) {
+                $rawPrice = (float) ($p['price'] ?? 0);
+                if (isset($p['currency']) && strtoupper($p['currency']) === 'KHR') {
+                    $rawPrice = round($rawPrice / 4000, 2);
+                } elseif ($rawPrice > 500) {
+                    $rawPrice = round($rawPrice / 4000, 2);
+                }
+                if ($rawPrice < 0.01) {
+                    $rawPrice = 0.01;
+                }
+
+                $name = trim($p['name'] ?? '');
+                if ($name === '') {
+                    $khrFormatted = number_format(round($rawPrice * 4000));
+                    $name = "{$khrFormatted} ៛";
+                }
+
+                $processedPrices[] = [
+                    'name' => $name,
+                    'price' => $rawPrice,
+                    'is_default' => !empty($p['is_default']),
+                    'sort_order' => isset($p['sort_order']) ? (int) $p['sort_order'] : $idx,
+                ];
+            }
+
+            $hasDefault = collect($processedPrices)->contains('is_default', true);
+            if (!$hasDefault && count($processedPrices) > 0) {
+                $processedPrices[0]['is_default'] = true;
+            }
+
+            $defaultOption = collect($processedPrices)->firstWhere('is_default', true);
+            $data['price'] = $defaultOption ? $defaultOption['price'] : collect($processedPrices)->min('price');
+        } elseif (isset($data['price'])) {
+            // Single price update
+            if (isset($data['currency']) && strtoupper($data['currency']) === 'KHR') {
+                $data['price'] = round((float) $data['price'] / 4000, 2);
+            } elseif ((float) $data['price'] > 500) {
+                $data['price'] = round((float) $data['price'] / 4000, 2);
+            }
+            if ($data['price'] < 0.01) {
+                $data['price'] = 0.01;
+            }
         }
         unset($data['currency']);
-
-        if (isset($data['price']) && $data['price'] < 0.01) {
-            $data['price'] = 0.01;
-        }
 
         if ($request->hasFile('image_file')) {
             if ($menuItem->image && !str_starts_with($menuItem->image, 'http')) {
@@ -118,14 +200,23 @@ class MenuItemController extends Controller
             $path = $request->file('image_file')->store('menu_items', 'public');
             $data['image'] = $path;
         }
-
         unset($data['image_file']);
 
         $menuItem->update($data);
 
+        // If prices was explicitly provided, sync prices
+        if ($hasPricesKey) {
+            $menuItem->prices()->delete();
+            if (!empty($processedPrices)) {
+                foreach ($processedPrices as $priceData) {
+                    $menuItem->prices()->create($priceData);
+                }
+            }
+        }
+
         return response()->json([
             'message' => 'Menu item updated successfully.',
-            'item' => new MenuItemResource($menuItem->load('category')),
+            'item' => new MenuItemResource($menuItem->load(['category', 'prices'])),
         ]);
     }
 

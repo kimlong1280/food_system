@@ -48,6 +48,14 @@ class MenuItem extends Model
     }
 
     /**
+     * Get the multiple price options for this item (by size, portion, etc.).
+     */
+    public function prices(): HasMany
+    {
+        return $this->hasMany(MenuItemPrice::class)->orderBy('sort_order')->orderBy('price');
+    }
+
+    /**
      * Scope: only available items.
      */
     public function scopeAvailable($query)

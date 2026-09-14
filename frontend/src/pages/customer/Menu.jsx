@@ -32,6 +32,7 @@ const Menu = () => {
 
   // Selected item for modal details
   const [selectedItem, setSelectedItem] = useState(null)
+  const [selectedVariant, setSelectedVariant] = useState(null)
   const [modalQuantity, setModalQuantity] = useState(1)
   const [modalNote, setModalNote] = useState('')
 
@@ -122,27 +123,35 @@ const Menu = () => {
   }, [menuItems, selectedCategory, searchQuery])
 
   // Quick add from card
-  const handleQuickAdd = (item) => {
-    addToCart(item, 1, '')
-    toast.success(t('addedItemToCart', { name: item.name }), {
+  const handleQuickAdd = (item, variant = null) => {
+    addToCart(item, 1, '', variant)
+    const displayName = variant ? `${item.name} (${variant.name})` : item.name
+    toast.success(t('addedItemToCart', { name: displayName }), {
       icon: <i className="fi fi-sr-shopping-cart text-orange-500" />,
       duration: 2000,
     })
   }
 
   // Open modal details
-  const handleSelectItem = (item) => {
+  const handleSelectItem = (item, preferredVariant = null) => {
     setSelectedItem(item)
     setModalQuantity(1)
     setModalNote('')
+    if (item.prices && item.prices.length > 0) {
+      const defaultVar = preferredVariant || item.prices.find((p) => p.is_default) || item.prices[0]
+      setSelectedVariant(defaultVar)
+    } else {
+      setSelectedVariant(null)
+    }
   }
 
   // Add from modal with quantity & note
   const handleModalAdd = () => {
     if (!selectedItem) return
-    addToCart(selectedItem, modalQuantity, modalNote)
+    addToCart(selectedItem, modalQuantity, modalNote, selectedVariant)
+    const variantLabel = selectedVariant ? ` (${selectedVariant.name})` : ''
     toast.success(
-      t('addedItemsToCart', { quantity: modalQuantity, name: selectedItem.name }),
+      t('addedItemsToCart', { quantity: modalQuantity, name: `${selectedItem.name}${variantLabel}` }),
       {
         icon: <i className="fi fi-sr-shopping-cart text-orange-500" />,
       }
@@ -278,17 +287,68 @@ const Menu = () => {
                       {translateType(selectedItem.type)} • {translateCategory(selectedItem.category_name)}
                     </p>
                   </div>
-                  <span className="text-xl font-black text-orange-600 shrink-0">
-                    ${parseFloat(selectedItem.price).toFixed(2)}
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-xl font-black text-orange-600 block">
+                      ${(selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(selectedItem.price)).toFixed(2)}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400 block">
+                      {(Math.round((selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(selectedItem.price)) * 4000)).toLocaleString()} ៛
+                    </span>
+                  </div>
                 </div>
 
                 <p className="text-sm text-slate-600 mt-2 leading-relaxed">
                   {selectedItem.description || t('defaultDishDesc')}
                 </p>
 
+                {/* Multiple Sizes / Price Options Selector */}
+                {selectedItem.prices && selectedItem.prices.length > 1 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-2 flex items-center justify-between">
+                      <span>{t('chooseYourPrice')} *</span>
+                      <span className="text-[10px] text-orange-600 font-bold lowercase">({selectedItem.prices.length} {t('priceOptions')})</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedItem.prices.map((p) => {
+                        const isSelected = selectedVariant?.id === p.id
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setSelectedVariant(p)}
+                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-orange-500 bg-orange-50/90 ring-2 ring-orange-500/25 shadow-xs'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`text-sm font-black truncate pr-1 ${isSelected ? 'text-orange-950' : 'text-slate-900'}`}>
+                                {p.name}
+                              </span>
+                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                isSelected ? 'border-orange-600 bg-orange-600' : 'border-slate-300'
+                              }`}>
+                                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-baseline gap-1.5">
+                              <span className={`text-base font-black ${isSelected ? 'text-orange-600' : 'text-slate-900'}`}>
+                                ${parseFloat(p.price).toFixed(2)}
+                              </span>
+                              <span className="text-xs font-bold text-slate-400">
+                                ({(Math.round(parseFloat(p.price) * 4000)).toLocaleString()} ៛)
+                              </span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Special Instructions Note Field */}
-                <div className="mt-5">
+                <div className="mt-4">
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     {t('specialInstructionsOptional')}
                   </label>
@@ -330,7 +390,7 @@ const Menu = () => {
                   className="flex-1 py-3 px-5 rounded-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold text-sm shadow-md shadow-orange-500/25 hover:shadow-lg active:scale-98 disabled:opacity-50 transition-all flex items-center justify-between cursor-pointer"
                 >
                   <span>{t('addToOrder')}</span>
-                  <span>${(selectedItem.price * modalQuantity).toFixed(2)}</span>
+                  <span>${(((selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(selectedItem.price))) * modalQuantity).toFixed(2)}</span>
                 </button>
               </div>
             </div>

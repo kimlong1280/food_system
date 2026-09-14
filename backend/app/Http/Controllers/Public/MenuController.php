@@ -34,7 +34,7 @@ class MenuController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = MenuItem::with('category');
+        $query = MenuItem::with(['category', 'prices']);
 
         // Optional filter: only available items for customers (default: true)
         if ($request->boolean('available_only', true)) {
@@ -77,7 +77,7 @@ class MenuController extends Controller
      */
     public function show(int $id): JsonResponse|MenuItemResource
     {
-        $item = MenuItem::with('category')->find($id);
+        $item = MenuItem::with(['category', 'prices'])->find($id);
 
         if (!$item) {
             return response()->json(['message' => 'Menu item not found.'], 404);

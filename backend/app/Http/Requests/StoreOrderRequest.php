@@ -19,6 +19,8 @@ class StoreOrderRequest extends FormRequest
             'note' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
+            'items.*.menu_item_price_id' => 'nullable|exists:menu_item_prices,id',
+            'items.*.variant_name' => 'nullable|string|max:100',
             'items.*.quantity' => 'required|integer|min:1|max:100',
             'items.*.note' => 'nullable|string|max:255',
         ];

@@ -14,6 +14,7 @@ const FoodDetails = () => {
   const { t, translateCategory, translateType } = useLanguage()
 
   const [item, setItem] = useState(null)
+  const [selectedVariant, setSelectedVariant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
@@ -23,7 +24,12 @@ const FoodDetails = () => {
       setLoading(true)
       try {
         const res = await api.get(`/menu-items/${id}`)
-        setItem(res.data.data)
+        const itemData = res.data.data
+        setItem(itemData)
+        if (itemData.prices && itemData.prices.length > 0) {
+          const defaultVar = itemData.prices.find((p) => p.is_default) || itemData.prices[0]
+          setSelectedVariant(defaultVar)
+        }
       } catch {
         toast.error(t('dishNotFound'))
         navigate('/menu')
@@ -37,8 +43,9 @@ const FoodDetails = () => {
 
   const handleAddToCart = () => {
     if (!item || !item.is_available) return
-    addToCart(item, quantity, note)
-    toast.success(t('addedItemsToCart', { quantity, name: item.name }), {
+    addToCart(item, quantity, note, selectedVariant)
+    const variantLabel = selectedVariant ? ` (${selectedVariant.name})` : ''
+    toast.success(t('addedItemsToCart', { quantity, name: `${item.name}${variantLabel}` }), {
       icon: <i className="fi fi-sr-shopping-cart text-orange-500" />,
     })
     navigate('/menu')
@@ -47,7 +54,9 @@ const FoodDetails = () => {
   if (loading) return <PageLoading text={t('loadingDish')} />
   if (!item) return null
 
-  const totalPrice = (parseFloat(item.price) * quantity).toFixed(2)
+  const unitPrice = selectedVariant ? parseFloat(selectedVariant.price) : parseFloat(item.price)
+  const unitPriceKhr = Math.round(unitPrice * 4000)
+  const totalPrice = (unitPrice * quantity).toFixed(2)
 
   return (
     <div className="pt-3 space-y-6 animate-slide-up">
@@ -110,10 +119,10 @@ const FoodDetails = () => {
               </div>
               <div className="text-right shrink-0">
                 <span className="text-2xl sm:text-3xl font-black text-orange-600 block">
-                  {item.formatted_price}
+                  ${unitPrice.toFixed(2)}
                 </span>
                 <span className="text-xs sm:text-sm font-bold text-slate-400 block">
-                  {item.formatted_price_khr || `${(parseFloat(item.price) * 4000).toLocaleString()} ៛`}
+                  {unitPriceKhr.toLocaleString()} ៛
                 </span>
               </div>
             </div>
@@ -121,6 +130,52 @@ const FoodDetails = () => {
             <p className="text-sm text-slate-600 leading-relaxed">
               {item.description || t('defaultDishDesc')}
             </p>
+
+            {/* Multiple Sizes / Price Options Selector */}
+            {item.prices && item.prices.length > 1 && (
+              <div className="pt-3 border-t border-slate-100">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-2 flex items-center justify-between">
+                  <span>{t('chooseYourPrice')} *</span>
+                  <span className="text-[10px] text-orange-600 font-bold lowercase">({item.prices.length} {t('priceOptions')})</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {item.prices.map((p) => {
+                    const isSelected = selectedVariant?.id === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedVariant(p)}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-orange-500 bg-orange-50/90 ring-2 ring-orange-500/25 shadow-xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-black truncate pr-1 ${isSelected ? 'text-orange-950' : 'text-slate-900'}`}>
+                            {p.name}
+                          </span>
+                          <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            isSelected ? 'border-orange-600 bg-orange-600' : 'border-slate-300'
+                          }`}>
+                            {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-baseline gap-1.5">
+                          <span className={`text-base font-black ${isSelected ? 'text-orange-600' : 'text-slate-900'}`}>
+                            ${parseFloat(p.price).toFixed(2)}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            ({(Math.round(parseFloat(p.price) * 4000)).toLocaleString()} ៛)
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Special Instructions */}
             <div className="pt-2">

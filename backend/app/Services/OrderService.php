@@ -29,9 +29,9 @@ class OrderService
                 ]);
             }
 
-            // 2. Fetch and validate all menu items
+            // 2. Fetch and validate all menu items (with their multiple price variants)
             $itemIds = collect($data['items'])->pluck('menu_item_id')->unique()->all();
-            $menuItems = MenuItem::whereIn('id', $itemIds)->get()->keyBy('id');
+            $menuItems = MenuItem::with('prices')->whereIn('id', $itemIds)->get()->keyBy('id');
 
             foreach ($data['items'] as $itemData) {
                 $menuItem = $menuItems->get($itemData['menu_item_id']);
@@ -56,13 +56,42 @@ class OrderService
             foreach ($data['items'] as $itemData) {
                 $menuItem = $menuItems->get($itemData['menu_item_id']);
                 $quantity = (int) $itemData['quantity'];
+
+                $priceVariantId = null;
+                $variantName = null;
+                $displayName = $menuItem->name;
                 $price = (float) $menuItem->price;
+
+                if (!empty($itemData['menu_item_price_id'])) {
+                    $variant = $menuItem->prices->firstWhere('id', $itemData['menu_item_price_id']);
+                    if (!$variant) {
+                        throw ValidationException::withMessages([
+                            'items' => ["Selected size/portion does not exist for \"{$menuItem->name}\"."],
+                        ]);
+                    }
+                    $priceVariantId = $variant->id;
+                    $variantName = $variant->name;
+                    $displayName = "{$menuItem->name} ({$variant->name})";
+                    $price = (float) $variant->price;
+                } elseif ($menuItem->prices->count() > 1) {
+                    // Fallback to default variant if item has multiple sizes
+                    $defaultVariant = $menuItem->prices->firstWhere('is_default', true) ?? $menuItem->prices->first();
+                    if ($defaultVariant) {
+                        $priceVariantId = $defaultVariant->id;
+                        $variantName = $defaultVariant->name;
+                        $displayName = "{$menuItem->name} ({$defaultVariant->name})";
+                        $price = (float) $defaultVariant->price;
+                    }
+                }
+
                 $lineSubtotal = round($price * $quantity, 2);
                 $calculatedSubtotal += $lineSubtotal;
 
                 $itemsToInsert[] = [
                     'menu_item_id' => $menuItem->id,
-                    'item_name' => $menuItem->name,
+                    'menu_item_price_id' => $priceVariantId,
+                    'item_name' => $displayName,
+                    'variant_name' => $variantName,
                     'price' => $price,
                     'quantity' => $quantity,
                     'subtotal' => $lineSubtotal,
@@ -93,7 +122,7 @@ class OrderService
             $table->update(['is_occupied' => true]);
 
             // Load relations for response and notification
-            $order->load(['table', 'orderItems.menuItem']);
+            $order->load(['table', 'orderItems.menuItem', 'orderItems.menuItemPrice']);
 
             // 6. Send Telegram Notification (safely handled inside service)
             $this->telegramService->sendOrderNotification($order);

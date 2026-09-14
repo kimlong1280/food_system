@@ -10,10 +10,10 @@ class MenuItemSeeder extends Seeder
 {
     public function run(): void
     {
-        $foodCat = Category::where('name', 'Food')->first();
-        $drinksCat = Category::where('name', 'Drinks')->first();
-        $coffeeCat = Category::where('name', 'Coffee')->first();
-        $dessertCat = Category::where('name', 'Dessert')->first();
+        $foodCat = Category::firstOrCreate(['name' => 'Food'], ['status' => true, 'sort_order' => 1]);
+        $drinksCat = Category::firstOrCreate(['name' => 'Drinks'], ['status' => true, 'sort_order' => 2]);
+        $coffeeCat = Category::firstOrCreate(['name' => 'Coffee'], ['status' => true, 'sort_order' => 3]);
+        $dessertCat = Category::firstOrCreate(['name' => 'Dessert'], ['status' => true, 'sort_order' => 4]);
 
         $items = [
             // Food
@@ -102,7 +102,21 @@ class MenuItemSeeder extends Seeder
                 'is_featured' => true,
             ],
 
-            // Dessert
+            [
+                'category_id' => $foodCat->id,
+                'name' => 'Chicken',
+                'description' => 'Crispy golden fried chicken seasoned with aromatic spices and herbs.',
+                'price' => 3.00,
+                'image' => 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&auto=format&fit=crop&q=80',
+                'type' => 'food',
+                'is_available' => true,
+                'is_featured' => true,
+                'prices' => [
+                    ['name' => 'Normal', 'price' => 3.00, 'is_default' => true, 'sort_order' => 0],
+                    ['name' => 'Special', 'price' => 5.00, 'is_default' => false, 'sort_order' => 1],
+                    ['name' => 'Very Special', 'price' => 7.00, 'is_default' => false, 'sort_order' => 2],
+                ],
+            ],
             [
                 'category_id' => $dessertCat->id,
                 'name' => 'Chocolate Lava Cake',
@@ -115,8 +129,16 @@ class MenuItemSeeder extends Seeder
             ],
         ];
 
-        foreach ($items as $item) {
-            MenuItem::updateOrCreate(['name' => $item['name']], $item);
+        foreach ($items as $itemData) {
+            $prices = $itemData['prices'] ?? null;
+            unset($itemData['prices']);
+
+            $menuItem = MenuItem::updateOrCreate(['name' => $itemData['name']], $itemData);
+
+            if (!empty($prices)) {
+                $menuItem->prices()->delete();
+                $menuItem->prices()->createMany($prices);
+            }
         }
     }
 }

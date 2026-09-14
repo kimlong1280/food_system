@@ -35,6 +35,11 @@ const CartItem = ({ item, onUpdateQuantity, onUpdateNote, onRemove }) => {
           <div className="flex justify-between items-start gap-2">
             <div>
               <h4 className="font-bold text-sm text-slate-900 line-clamp-1">{item.name}</h4>
+              {item.variant_name && (
+                <span className="inline-block px-2 py-0.5 mt-0.5 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-[10px] font-extrabold">
+                  {item.variant_name}
+                </span>
+              )}
               <p className="text-xs text-orange-600 font-semibold mt-0.5">
                 ${item.price.toFixed(2)} / {t('each')}
               </p>
