@@ -16,28 +16,8 @@ services:
         value: "false"
       - key: DB_CONNECTION
         value: pgsql
-      - key: DB_HOST
-        fromDatabase:
-          name: food-system-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: food-system-db
-          property: port
-      - key: DB_DATABASE
-        fromDatabase:
-          name: food-system-db
-          property: database
-      - key: DB_USERNAME
-        fromDatabase:
-          name: food-system-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: food-system-db
-          property: password
-      - key: DB_SSLMODE
-        value: prefer
+      - key: DATABASE_URL
+        sync: false
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
@@ -56,10 +36,3 @@ services:
         value: "8825095914:AAELG9lUC_WCylFve2Lfe563Km2iCAy-2UM"
       - key: TELEGRAM_CHAT_ID
         value: "-5376919317"
-
-databases:
-  # Free Managed PostgreSQL Database on Render
-  - name: food-system-db
-    plan: free
-    region: oregon
-    databaseName: food_system
