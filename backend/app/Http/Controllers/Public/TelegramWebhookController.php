@@ -82,12 +82,12 @@ class TelegramWebhookController extends Controller
                 $tableName = $table?->table_number ?? $tableId;
                 $telegramService->answerCallbackQuery(
                     $queryId,
-                    "✅ បានបញ្ជាក់ការទូទាត់ប្រាក់តុ {$tableName} រួចរាល់!",
+                    "បានបញ្ជាក់ការទូទាត់ប្រាក់តុ {$tableName} រួចរាល់!",
                     false
                 );
 
                 if ($chatId && $messageId && $table) {
-                    $handledByInfo = "✅ បានទូទាត់ប្រាក់រួចរាល់ដោយ: {$userName} ({$nowCambodia})";
+                    $handledByInfo = "Paid by: {$userName} ({$nowCambodia})";
                     $total = (float) $activeOrders->sum('total');
                     $updatedMessage = $telegramService->formatPaymentRequestMessage($table, $activeOrders, $total, null, $handledByInfo);
 
@@ -95,7 +95,7 @@ class TelegramWebhookController extends Controller
                         'inline_keyboard' => [
                             [
                                 [
-                                    'text' => "✅ បានទូទាត់ប្រាក់រួចរាល់ដោយ: {$userName}",
+                                    'text' => "Paid: {$userName}",
                                     'callback_data' => 'none',
                                 ],
                             ],
@@ -111,7 +111,7 @@ class TelegramWebhookController extends Controller
                 // Table has no active orders (or was a test message)
                 $telegramService->answerCallbackQuery(
                     $queryId,
-                    "✅ បានបញ្ជាក់ការទូទាត់ប្រាក់ដោយជោគជ័យ!",
+                    "បានបញ្ជាក់ការទូទាត់ប្រាក់ដោយជោគជ័យ!",
                     false
                 );
 
@@ -120,7 +120,7 @@ class TelegramWebhookController extends Controller
                         'inline_keyboard' => [
                             [
                                 [
-                                    'text' => "✅ បានទូទាត់ប្រាក់រួចរាល់ដោយ: {$userName}",
+                                    'text' => "Paid: {$userName}",
                                     'callback_data' => 'none',
                                 ],
                             ],
@@ -162,19 +162,19 @@ class TelegramWebhookController extends Controller
 
                     $telegramService->answerCallbackQuery(
                         $queryId,
-                        "✅ បានទទួលការកុម្ម៉ង់ #{$order->order_number} រួចរាល់! ផ្ទះបាយកំពុងចម្អិន...",
+                        "បានទទួលការកុម្ម៉ង់ #{$order->order_number} រួចរាល់! (Preparing...)",
                         false
                     );
 
                     if ($chatId && $messageId) {
-                        $handledByInfo = "✅ {$userName} (កំពុងចម្អិន - {$nowCambodia})";
+                        $handledByInfo = "{$userName} (Preparing - {$nowCambodia})";
                         $updatedMessage = $telegramService->formatOrderReceiptMessage($order, $handledByInfo);
 
                         $updatedReplyMarkup = [
                             'inline_keyboard' => [
                                 [
                                     [
-                                        'text' => "✅ បានទទួលដោយ: {$userName} (កំពុងចម្អិន)",
+                                        'text' => "Accepted: {$userName} (Preparing)",
                                         'callback_data' => 'none',
                                     ],
                                 ],
@@ -190,7 +190,7 @@ class TelegramWebhookController extends Controller
                     // Fallback for test alert or orders from previous restart
                     $telegramService->answerCallbackQuery(
                         $queryId,
-                        "✅ បានទទួលការកុម្ម៉ង់ដោយជោគជ័យ! (Order accepted)",
+                        "បានទទួលការកុម្ម៉ង់ដោយជោគជ័យ! (Order accepted)",
                         false
                     );
 
@@ -199,7 +199,7 @@ class TelegramWebhookController extends Controller
                             'inline_keyboard' => [
                                 [
                                     [
-                                        'text' => "✅ បានទទួលដោយ: {$userName} (កំពុងចម្អិន)",
+                                        'text' => "Accepted: {$userName} (Preparing)",
                                         'callback_data' => 'none',
                                     ],
                                 ],
@@ -221,12 +221,12 @@ class TelegramWebhookController extends Controller
             if ($action === 'reject') {
                 if ($order) {
                     if (strtolower($order->status) === 'cancelled') {
-                        $telegramService->answerCallbackQuery($queryId, "ℹ️ ការកុម្ម៉ង់ #{$order->order_number} ត្រូវបានបដិសេធរួចហើយ!");
+                        $telegramService->answerCallbackQuery($queryId, "ការកុម្ម៉ង់ #{$order->order_number} ត្រូវបានបដិសេធរួចហើយ!");
                         return response()->json(['ok' => true]);
                     }
 
                     if (in_array(strtolower($order->status), ['preparing', 'ready', 'served', 'completed'])) {
-                        $telegramService->answerCallbackQuery($queryId, "⚠️ ការកុម្ម៉ង់ #{$order->order_number} កំពុងចម្អិនរួចហើយ មិនអាចបដិសេធបានទេ!");
+                        $telegramService->answerCallbackQuery($queryId, "ការកុម្ម៉ង់ #{$order->order_number} កំពុងចម្អិនរួចហើយ មិនអាចបដិសេធបានទេ!");
                         return response()->json(['ok' => true]);
                     }
 
@@ -234,19 +234,19 @@ class TelegramWebhookController extends Controller
 
                     $telegramService->answerCallbackQuery(
                         $queryId,
-                        "❌ បានបដិសេធការកុម្ម៉ង់ #{$order->order_number}!",
+                        "បានបដិសេធការកុម្ម៉ង់ #{$order->order_number}!",
                         false
                     );
 
                     if ($chatId && $messageId) {
-                        $handledByInfo = "❌ បដិសេធដោយ: {$userName} ({$nowCambodia})";
+                        $handledByInfo = "Rejected by: {$userName} ({$nowCambodia})";
                         $updatedMessage = $telegramService->formatOrderReceiptMessage($order, $handledByInfo);
 
                         $updatedReplyMarkup = [
                             'inline_keyboard' => [
                                 [
                                     [
-                                        'text' => "❌ បានបដិសេធដោយ: {$userName}",
+                                        'text' => "Rejected: {$userName}",
                                         'callback_data' => 'none',
                                     ],
                                 ],
@@ -261,7 +261,7 @@ class TelegramWebhookController extends Controller
                 } else {
                     $telegramService->answerCallbackQuery(
                         $queryId,
-                        "❌ បានបដិសេធការកុម្ម៉ង់សាកល្បង!",
+                        "បានបដិសេធការកុម្ម៉ង់!",
                         false
                     );
 
@@ -270,7 +270,7 @@ class TelegramWebhookController extends Controller
                             'inline_keyboard' => [
                                 [
                                     [
-                                        'text' => "❌ បានបដិសេធដោយ: {$userName}",
+                                        'text' => "Rejected: {$userName}",
                                         'callback_data' => 'none',
                                     ],
                                 ],

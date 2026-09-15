@@ -113,23 +113,37 @@ chmod -R 775 /var/www/html/database
 chmod 664 /var/www/html/database/database.sqlite
 
 # Verify PostgreSQL connection; fallback to SQLite if unreachable
-if [ "$DB_CONNECTION" = "pgsql" ] || [ -n "$DB_HOST" ]; then
+if [ "$DB_CONNECTION" = "pgsql" ] || [ -n "$DB_HOST" ] || [ -n "$DATABASE_URL" ]; then
     echo "Verifying PostgreSQL connection..."
     if php -r '
-        $h = getenv("DB_HOST");
-        $u = getenv("DB_USERNAME");
-        $p = getenv("DB_PASSWORD");
-        $d = getenv("DB_DATABASE");
-        $s = getenv("DB_SSLMODE") ?: "prefer";
-        $port = getenv("DB_PORT") ?: 5432;
+        $url = getenv("DATABASE_URL");
+        if (!empty($url)) {
+            $parsed = parse_url($url);
+            $h = $parsed["host"] ?? "";
+            $port = $parsed["port"] ?? 5432;
+            $u = $parsed["user"] ?? "";
+            $p = $parsed["pass"] ?? "";
+            $d = ltrim($parsed["path"] ?? "", "/");
+            parse_str($parsed["query"] ?? "", $q);
+            $s = $q["sslmode"] ?? "require";
+        } else {
+            $h = getenv("DB_HOST");
+            $u = getenv("DB_USERNAME");
+            $p = getenv("DB_PASSWORD");
+            $d = getenv("DB_DATABASE");
+            $s = getenv("DB_SSLMODE") ?: "prefer";
+            $port = getenv("DB_PORT") ?: 5432;
+        }
         try {
-            $pdo = new PDO("pgsql:host={$h};port={$port};dbname={$d};sslmode={$s}", $u, $p, [PDO::ATTR_TIMEOUT => 3]);
+            $pdo = new PDO("pgsql:host={$h};port={$port};dbname={$d};sslmode={$s}", $u, $p, [PDO::ATTR_TIMEOUT => 6]);
             exit(0);
         } catch (\Throwable $e) {
+            echo "PostgreSQL connection error: " . $e->getMessage() . "\n";
             exit(1);
         }
     '; then
         echo "PostgreSQL is reachable and connected!"
+        export DB_CONNECTION=pgsql
     else
         echo "PostgreSQL database is currently unreachable."
         echo "Activating built-in SQLite database fallback so APIs and menu work immediately..."
@@ -146,11 +160,22 @@ php artisan view:cache || echo "Warning: view cache failed, continuing..."
 php artisan event:cache || echo "Warning: event cache failed, continuing..."
 
 # Run database migrations and seeding
-echo "Running database migrations and seeding..."
+echo "Running database migrations..."
 for i in 1 2 3; do
     if php artisan migrate --force; then
         echo "Database migrations completed successfully!"
-        php artisan db:seed --force || echo "Seeding completed or already seeded."
+        php -r '
+            require "vendor/autoload.php";
+            $app = require_once "bootstrap/app.php";
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (\App\Models\MenuItem::count() === 0) {
+                echo "Empty database detected. Seeding default initial menu...\n";
+                \Illuminate\Support\Facades\Artisan::call("db:seed", ["--force" => true]);
+                echo \Illuminate\Support\Facades\Artisan::output();
+            } else {
+                echo "Database already contains " . \App\Models\MenuItem::count() . " menu items. Skipping seed to protect user data.\n";
+            }
+        ' || php artisan db:seed --force || echo "Seeding completed or already seeded."
         break
     fi
     echo "Database migration attempt $i/3 failed, retrying in 2 seconds..."
