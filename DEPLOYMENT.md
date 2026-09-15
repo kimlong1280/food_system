@@ -50,12 +50,11 @@ git push -u origin main
    - `APP_KEY`: Generate one locally via `php artisan key:generate --show` or paste 32 random characters: `base64:...`
    - `APP_URL`: Your Render backend URL (e.g., `https://food-system-backend.onrender.com`)
    - `FRONTEND_URL`: Your Vercel domain once created (e.g., `https://sreykeo.vercel.app`)
+   - `DATABASE_URL`: Your PostgreSQL connection string (from Neon.tech or Render)
    - `TELEGRAM_BOT_TOKEN`: Your Telegram Bot Token
    - `TELEGRAM_CHAT_ID`: Your Telegram Group or Channel ID
-7. To seed default menu items and admin credentials, open the **Shell** tab on Render and run:
-```bash
-php artisan db:seed --force
-```
+
+Migrations run automatically on boot. No manual seeding is needed!
 
 ---
 

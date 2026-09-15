@@ -159,23 +159,11 @@ php artisan route:cache || echo "Warning: route cache failed, continuing..."
 php artisan view:cache || echo "Warning: view cache failed, continuing..."
 php artisan event:cache || echo "Warning: event cache failed, continuing..."
 
-# Run database migrations and seeding
+# Run database migrations
 echo "Running database migrations..."
 for i in 1 2 3; do
     if php artisan migrate --force; then
         echo "Database migrations completed successfully!"
-        php -r '
-            require "vendor/autoload.php";
-            $app = require_once "bootstrap/app.php";
-            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-            if (\App\Models\MenuItem::count() === 0) {
-                echo "Empty database detected. Seeding default initial menu...\n";
-                \Illuminate\Support\Facades\Artisan::call("db:seed", ["--force" => true]);
-                echo \Illuminate\Support\Facades\Artisan::output();
-            } else {
-                echo "Database already contains " . \App\Models\MenuItem::count() . " menu items. Skipping seed to protect user data.\n";
-            }
-        ' || php artisan db:seed --force || echo "Seeding completed or already seeded."
         break
     fi
     echo "Database migration attempt $i/3 failed, retrying in 2 seconds..."

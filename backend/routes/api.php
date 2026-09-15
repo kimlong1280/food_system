@@ -34,13 +34,9 @@ Route::prefix('')->group(function () {
             \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             $migrateOutput = \Illuminate\Support\Facades\Artisan::output();
 
-            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
-
             return response()->json([
                 'status' => 'success',
                 'migrate' => $migrateOutput,
-                'seed' => $seedOutput,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
